@@ -109,6 +109,7 @@ await as(pasA, async () => {
   ok("pasabuyer view: only ONHAND of own company", v.length >= 1 && v.every((r) => r.status === "ONHAND") && !v.some((r) => r.notes === "b-onhand"), JSON.stringify(v));
   const cols = Object.keys(v[0] ?? {});
   ok("pasabuyer view exposes no financial columns", !cols.some((c) => /price|rate|cost|profit|total|address/.test(c)), cols.join(","));
+  ok("pasabuyer view hides customer name and packed", !cols.some((c) => /customer|secured|packed/.test(c)), cols.join(","));
   ok("pasabuyer view still returns the item id", v.every((r) => typeof r.mercari_item_id === "string"));
   ok("pasabuyer view hides JP_ADDRESS items", !v.some((r) => r.notes === "a-jp"));
   ok("pasabuyer cannot insert item", (await err(newItem(custA, 20))) !== null);

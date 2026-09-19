@@ -40,10 +40,8 @@ export type PasabuyerItem = {
   mercari_url: string;
   mercari_item_id: string | null;
   image_url: string | null;
-  customer_name: string;
   notes: string;
   status: ItemStatus;
-  secured: boolean;
   created_at: string;
 };
 

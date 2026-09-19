@@ -35,11 +35,11 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   if (profile.role !== "OWNER") {
     const { data, error } = await supabase
       .from("pasabuyer_items")
-      .select("id, mercari_url, mercari_item_id, image_url, customer_name, notes, status, secured, created_at")
+      .select("id, mercari_url, mercari_item_id, image_url, notes, status, created_at")
       .order("created_at", { ascending: false })
       .limit(MAX_ROWS);
     const all = (data ?? []) as PasabuyerItem[];
-    const items = q ? all.filter((i) => matches(q, i.customer_name, i.notes, i.mercari_item_id)) : all;
+    const items = q ? all.filter((i) => matches(q, i.notes, i.mercari_item_id)) : all;
     return (
       <>
         <PageHeader title="Inventory" subtitle="Items that are onhand" search={{ action: "/inventory", defaultValue: q }} />

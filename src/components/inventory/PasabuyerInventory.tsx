@@ -21,10 +21,10 @@ export function PasabuyerInventory({ items }: { items: PasabuyerItem[] }) {
   return (
     <>
       <div className="hidden overflow-x-auto rounded-2xl border border-neutral-200 md:block">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[480px] text-left text-sm">
           <thead className="bg-neutral-100/70 text-neutral-500">
             <tr>
-              {["Product Image", "Item ID", "Customer", "Notes", "Packed"].map((h) => (
+              {["Product Image", "Item ID", "Notes"].map((h) => (
                 <th key={h} scope="col" className="whitespace-nowrap px-4 py-3.5 font-medium">
                   {h}
                 </th>
@@ -43,11 +43,9 @@ export function PasabuyerInventory({ items }: { items: PasabuyerItem[] }) {
                   </div>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">{item.mercari_item_id ?? "—"}</td>
-                <td className="px-4 py-3 font-medium">{item.customer_name}</td>
                 <td className="max-w-[280px] px-4 py-3 text-neutral-600">
                   <span className="line-clamp-2 whitespace-pre-line break-words">{item.notes || "—"}</span>
                 </td>
-                <td className="px-4 py-3">{item.secured ? "Yes" : "No"}</td>
               </tr>
             ))}
           </tbody>
@@ -60,9 +58,7 @@ export function PasabuyerInventory({ items }: { items: PasabuyerItem[] }) {
             <div className="flex gap-3">
               <ImageZoom src={item.image_url} className="h-20 w-20" />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{item.customer_name}</p>
                 <p className="font-mono text-xs text-neutral-500">{item.mercari_item_id ?? "—"}</p>
-                {item.secured && <p className="mt-1 text-xs font-medium text-accent-dark">Packed</p>}
               </div>
             </div>
             {item.notes && <p className="mt-3 whitespace-pre-line break-words text-sm text-neutral-600">{item.notes}</p>}

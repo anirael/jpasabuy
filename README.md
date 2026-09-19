@@ -76,7 +76,7 @@ pip install -r requirements-dev.txt && pytest tests/scraper
 - Every user has one row in `profiles` (`company_id`, `role`). All data tables carry `company_id`.
 - **RLS policies** on `customers` and `items` allow only an `OWNER` of the *same* company. A company can never read or write another's rows.
 - **Pasabuyers have no access to the `items`/`customers` tables at all.** They read the `pasabuyer_items` view, which returns only `ONHAND`
-  rows of their own company and only non-financial columns (photo, item link/ID, customer name, notes, packed). No JP price, rates, totals, profit or addresses.
+  rows of their own company and only non-financial columns (photo, item link/ID, notes). No JP price, rates, totals, profit or addresses.
 - Triggers reject an item whose customer belongs to a different company, and block changing `company_id`.
 - `total_price`, `pasabuyer_cost` and `profit` are **generated columns** (`numeric`), so clients can never send their own totals.
 - The app additionally checks the role in every Server Action and page (`requireOwner` / `assertOwner`), but the database is the source of truth.
@@ -106,7 +106,7 @@ Each item goes through these steps:
 - **Loading**: every module shows a skeleton placeholder (`loading.tsx`) while its data loads.
 
 ## Assumptions (change if you disagree)
-- Pasabuyers see: photo, Mercari link, item ID, customer **name**, notes, packed — not prices, rates or addresses (edit the `pasabuyer_items` view to change this).
+- Pasabuyers see: photo, Mercari link, item ID, notes — not the customer, packed flag, prices, rates or addresses (edit the `pasabuyer_items` view to change this).
 - Themes map each palette to roles: darkest colors for the sidebar, mid colors for buttons, highlights and the chart line, lightest for the page background. A few text shades are darkened versions of the palette so text stays readable.
 - The Profit chart counts delivered items only (by `delivered_at`); Order status counts all items right now.
 - Deleting a customer with items is blocked (delete or reassign their items first).
