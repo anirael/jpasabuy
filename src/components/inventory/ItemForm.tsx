@@ -43,9 +43,9 @@ export function ItemForm({ action, customers, item }: Props) {
   const [mercariUrl, setMercariUrl] = useState(item?.mercari_url ?? "");
   const [urlTouched, setUrlTouched] = useState(false);
   const [imageUrl, setImageUrl] = useState(item?.image_url ?? "");
-  const [jpPrice, setJpPrice] = useState(item ? String(item.jp_price) : "");
-  const [rate, setRate] = useState(item ? Number(item.rate).toFixed(2) : "");
-  const [pasabuyerRate, setPasabuyerRate] = useState(item ? Number(item.pasabuyer_rate).toFixed(2) : "");
+  const [jpPrice, setJpPrice] = useState(item?.jp_price != null ? String(item.jp_price) : "");
+  const [rate, setRate] = useState(item?.rate != null ? Number(item.rate).toFixed(2) : "");
+  const [pasabuyerRate, setPasabuyerRate] = useState(item?.pasabuyer_rate != null ? Number(item.pasabuyer_rate).toFixed(2) : "");
   const [customerId, setCustomerId] = useState(item?.customer_id ?? "");
   const [status, setStatus] = useState<ItemStatus>(item?.status ?? "SECURED");
   // Controlled (not defaultValue) so React 19 does not reset them after a failed submit.
@@ -399,7 +399,7 @@ export function ItemForm({ action, customers, item }: Props) {
         </fieldset>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Price (JPY)" name="jpPrice" error={fe.jpPrice}>
+          <Field label="Price (JPY, optional)" name="jpPrice" error={fe.jpPrice}>
             <input
               id="jpPrice"
               name="jpPrice"
@@ -411,7 +411,7 @@ export function ItemForm({ action, customers, item }: Props) {
               className={`field ${fe.jpPrice ? "field-error" : ""}`}
             />
           </Field>
-          <Field label="Rate (JPY → PHP)" name="rate" error={fe.rate}>
+          <Field label="Rate (JPY → PHP, optional)" name="rate" error={fe.rate}>
             <select id="rate" name="rate" value={rate} onChange={(e) => setRate(e.target.value)} className={`field ${fe.rate ? "field-error" : ""}`}>
               <option value="">Select…</option>
               {rateOptions.map((r) => (
@@ -421,7 +421,7 @@ export function ItemForm({ action, customers, item }: Props) {
               ))}
             </select>
           </Field>
-          <Field label="Pasabuyer rate" name="pasabuyerRate" error={fe.pasabuyerRate}>
+          <Field label="Pasabuyer rate (optional)" name="pasabuyerRate" error={fe.pasabuyerRate}>
             <select
               id="pasabuyerRate"
               name="pasabuyerRate"
@@ -563,7 +563,7 @@ function QueueList({
                       {i + 1}. {q.customerLabel}
                     </p>
                     <p className="text-xs text-neutral-500">
-                      {formatJPY(q.draft.jpPrice)} × {q.draft.rate} → <span className="font-medium text-ink">{t.total === null ? "—" : formatPHP(t.total)}</span>
+                      {formatJPY(q.draft.jpPrice)} × {q.draft.rate || "—"} →<span className="font-medium text-ink">{t.total === null ? "—" : formatPHP(t.total)}</span>
                     </p>
                     <div className="mt-1 flex gap-3 text-xs">
                       <button type="button" disabled={disabled} onClick={() => onEdit(q.key)} className="font-medium text-neutral-600 hover:text-ink hover:underline disabled:opacity-50">

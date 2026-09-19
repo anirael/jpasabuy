@@ -7,6 +7,8 @@ import { STATUSES } from "@/lib/types";
 
 const rateValues = RATE_OPTIONS.map((r) => r.toFixed(2)) as [string, ...string[]];
 
+const blankToNull = (v: unknown) => (v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? null : v);
+
 export const itemSchema = z
   .object({
     mercariUrl: z.string().trim().refine(isValidItemLink, ITEM_LINK_ERROR),
@@ -23,13 +25,18 @@ export const itemSchema = z
           return false;
         }
       }, "Enter a valid http(s) image URL."),
-    jpPrice: z.coerce
-      .number({ message: "Enter the price in yen." })
-      .int("Use a whole number of yen.")
-      .positive("Price must be greater than 0.")
-      .max(99_999_999, "Price is too large."),
-    rate: z.enum(rateValues, { message: "Choose a rate." }),
-    pasabuyerRate: z.enum(rateValues, { message: "Choose a Pasabuyer rate." }),
+    // Price and both rates are optional: blank -> null, anything else is still validated.
+    jpPrice: z.preprocess(
+      blankToNull,
+      z.coerce
+        .number({ message: "Enter the price in yen." })
+        .int("Use a whole number of yen.")
+        .positive("Price must be greater than 0.")
+        .max(99_999_999, "Price is too large.")
+        .nullable(),
+    ),
+    rate: z.preprocess(blankToNull, z.enum(rateValues, { message: "Choose a rate." }).nullable()),
+    pasabuyerRate: z.preprocess(blankToNull, z.enum(rateValues, { message: "Choose a Pasabuyer rate." }).nullable()),
     customerId: z.string().min(1, "Choose a customer."),
     newCustomerName: z.string().trim().max(120).default(""),
     newCustomerAddress: z.string().trim().max(500).default(""),

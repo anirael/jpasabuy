@@ -19,12 +19,13 @@ export type Item = {
   mercari_url: string;
   mercari_item_id: string | null;
   image_url: string | null;
-  jp_price: number;
-  rate: number;
-  pasabuyer_rate: number;
-  total_price: string | number;
-  pasabuyer_cost: string | number;
-  profit: string | number;
+  // Price and rates are optional, so the values computed from them are NULL until they are set.
+  jp_price: number | null;
+  rate: number | null;
+  pasabuyer_rate: number | null;
+  total_price: string | number | null;
+  pasabuyer_cost: string | number | null;
+  profit: string | number | null;
   status: ItemStatus;
   /** The separate "Packed" checkbox (the column keeps its original name; not the same as the Secured status). */
   secured: boolean;

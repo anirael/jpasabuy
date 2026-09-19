@@ -67,7 +67,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                         <p className="font-mono text-xs text-neutral-500">{i.mercari_item_id ?? "—"}</p>
                         <p className="font-display text-sm font-semibold">
-                          {formatJPY(i.jp_price)} → {formatPHPDecimal(i.total_price)}
+                          {formatJPY(i.jp_price)} → {i.total_price == null ? "—" : formatPHPDecimal(i.total_price)}
                         </p>
                       </div>
                       {i.notes && <p className="line-clamp-2 break-words text-sm text-neutral-600">{i.notes}</p>}

@@ -109,7 +109,7 @@ export function OwnerInventory({ items }: { items: Item[] }) {
                   <td className="px-4 py-3 font-medium">{item.customers?.name ?? "—"}</td>
                   <td className="whitespace-nowrap px-4 py-3">{formatJPY(item.jp_price)}</td>
                   <td className="px-4 py-3">{formatRate(item.rate)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 font-medium">{formatPHPDecimal(item.total_price)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-medium">{item.total_price == null ? "—" : formatPHPDecimal(item.total_price)}</td>
                   <td className="max-w-[220px] px-4 py-3 text-neutral-600">
                     <span className="line-clamp-2 whitespace-pre-line break-words">{item.notes || "—"}</span>
                   </td>
@@ -149,7 +149,7 @@ export function OwnerInventory({ items }: { items: Item[] }) {
                   <p className="mt-0.5 text-sm text-neutral-500">
                     {formatJPY(item.jp_price)} × {formatRate(item.rate)}
                   </p>
-                  <p className="font-display text-lg font-semibold">{formatPHPDecimal(item.total_price)}</p>
+                  <p className="font-display text-lg font-semibold">{item.total_price == null ? "—" : formatPHPDecimal(item.total_price)}</p>
                 </div>
               </div>
               {item.notes && <p className="mt-3 whitespace-pre-line break-words text-sm text-neutral-600">{item.notes}</p>}

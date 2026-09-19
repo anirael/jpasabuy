@@ -28,10 +28,20 @@ test("jpPrice is coerced from the string typed in the form", () => {
 });
 
 test("invalid drafts report per-field errors", () => {
-  const r = itemSchema.safeParse({ ...base, mercariUrl: "not a link", jpPrice: "", rate: "", pasabuyerRate: "0.99", customerId: "" });
+  const r = itemSchema.safeParse({ ...base, mercariUrl: "not a link", jpPrice: "abc", rate: "0.99", pasabuyerRate: "0.99", customerId: "" });
   assert.ok(!r.success);
   const fe = fieldErrorsOf(r.error);
   for (const k of ["mercariUrl", "jpPrice", "rate", "pasabuyerRate", "customerId"]) assert.ok(fe[k], `expected an error for ${k}`);
+});
+
+test("price, rate and Pasabuyer rate are optional and blank becomes null", () => {
+  for (const blank of ["", "  ", undefined, null]) {
+    const r = itemSchema.safeParse({ ...base, jpPrice: blank, rate: blank, pasabuyerRate: blank });
+    assert.ok(r.success, String(blank));
+    assert.deepEqual([r.data.jpPrice, r.data.rate, r.data.pasabuyerRate], [null, null, null]);
+  }
+  const r = itemSchema.safeParse({ ...base, jpPrice: "", rate: "0.45", pasabuyerRate: "" });
+  assert.ok(r.success && r.data.jpPrice === null && r.data.rate === "0.45" && r.data.pasabuyerRate === null);
 });
 
 test("new customer needs a name; existing customer id must be a uuid", () => {

@@ -10,7 +10,8 @@ export function rateToHundredths(rate: string | number | null | undefined): numb
   return Number.isFinite(n) && n >= 40 && n <= 50 ? n : null;
 }
 
-export function formatRate(rate: string | number): string {
+export function formatRate(rate: string | number | null | undefined): string {
+  if (rate === null || rate === undefined || rate === "") return "—";
   return Number(rate).toFixed(2);
 }
 
@@ -37,7 +38,8 @@ export function formatPHPDecimal(value: string | number | null | undefined): str
   return formatPHP(decimalToCentavos(value));
 }
 
-export function formatJPY(value: string | number): string {
+export function formatJPY(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
   return `¥${Math.round(Number(value)).toLocaleString("en-US")}`;
 }
 
