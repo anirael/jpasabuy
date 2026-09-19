@@ -3,9 +3,9 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from app import main
-from app.fetcher import derived_image_url, is_valid_item_url
-from app.parser import parse_item_html, parse_price, safe_image_url
+from _mercari import main
+from _mercari.fetcher import derived_image_url, is_valid_item_url
+from _mercari.parser import parse_item_html, parse_price, safe_image_url
 
 GOOD = "https://jp.mercari.com/en/item/m12345678901"
 
@@ -242,7 +242,7 @@ def test_php_prices_are_never_mistaken_for_yen():
 
 
 # ---- .env.local loading --------------------------------------------------------------------------------------------
-from app.config import CANDIDATES, load_env, parse_env_line  # noqa: E402
+from _mercari.config import CANDIDATES, load_env, parse_env_line  # noqa: E402
 
 
 @pytest.mark.parametrize(
@@ -280,3 +280,14 @@ def test_load_env_reads_file_but_never_overrides(tmp_path, monkeypatch):
 
 def test_scraper_looks_at_the_project_env_file():
     assert any(str(p).endswith(".env.local") for p in CANDIDATES)
+
+
+def test_vercel_entrypoint_serves_both_prefixes(monkeypatch):
+    import importlib
+
+    monkeypatch.setenv("SCRAPER_SECRET", "s3cret")
+    entry = importlib.import_module("index")  # api/index.py, the Vercel Function entrypoint
+    c = TestClient(entry.app)
+    assert c.get("/api/health").status_code == 200
+    assert c.get("/health").status_code == 200
+    assert c.post("/api/scrape", json={"url": GOOD}).status_code == 401

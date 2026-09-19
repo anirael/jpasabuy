@@ -1,6 +1,11 @@
-"""Mercari scraper microservice. Called only by the Next.js server (never by browsers).
+"""Mercari scraper. Called only by the Next.js server (never by browsers).
 
-    uvicorn app.main:app --host 127.0.0.1 --port 8001
+On Vercel it runs as a Python Function (api/index.py); locally:
+
+    cd api && uvicorn index:app --host 127.0.0.1 --port 8001
+
+Routes answer under both /scrape and /api/scrape, so SCRAPER_URL is the bare host locally
+(http://127.0.0.1:8001) and https://<your-app>.vercel.app/api on Vercel.
 """
 
 from __future__ import annotations
@@ -9,7 +14,7 @@ import hmac
 import logging
 import os
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import APIRouter, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from .config import load_env
@@ -25,6 +30,7 @@ if not os.getenv("SCRAPER_SECRET"):
         ", ".join(str(f) for f in _env_files) or "(no .env files found)",
     )
 app = FastAPI(title="Mercari scraper", docs_url=None, redoc_url=None, openapi_url=None)
+router = APIRouter()
 
 
 class ScrapeRequest(BaseModel):
@@ -45,12 +51,12 @@ def _check_secret(provided: str | None) -> None:
         raise HTTPException(401, "unauthorized")
 
 
-@app.get("/health")
+@router.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/scrape", response_model=ScrapeResponse)
+@router.post("/scrape", response_model=ScrapeResponse)
 async def scrape(body: ScrapeRequest, x_scraper_secret: str | None = Header(default=None)) -> ScrapeResponse:
     _check_secret(x_scraper_secret)
 
@@ -79,3 +85,7 @@ async def scrape(body: ScrapeRequest, x_scraper_secret: str | None = Header(defa
     if result["image_url"] is None and result["jp_price"] is None:
         raise HTTPException(502, "could not extract item details")
     return ScrapeResponse(**result)
+
+
+app.include_router(router)
+app.include_router(router, prefix="/api")

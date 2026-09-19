@@ -34,12 +34,14 @@ npm run dev          # http://localhost:3000
 
 ### 4. Run the Mercari scraper service (Python)
 ```bash
-cd scraper
+# from the project root (the folder that contains requirements-dev.txt)
 python -m venv .venv
 .venv\Scripts\activate            # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8001
+pip install -r requirements-dev.txt
+cd api
+uvicorn index:app --host 127.0.0.1 --port 8001
 ```
+The scraper is a Python Function in `api/` (entrypoint `api/index.py`, code in `api/_mercari/`). Locally `SCRAPER_URL=http://127.0.0.1:8001`. **On Vercel** it deploys together with the app (`vercel.json` routes `/api/*` to it, and the root `requirements.txt` is installed automatically): set `SCRAPER_URL=https://<your-app>.vercel.app/api` and the same `SCRAPER_SECRET`. The Playwright fallback cannot run on Vercel, and if deployment protection is on for a deployment the app can't reach the function, so use the production domain.
 The scraper reads `SCRAPER_SECRET` from the project's `.env.local` by itself, so it always matches the web app (a variable set in the shell takes priority). If it is missing, the scraper logs a clear error and answers `503`.
 If the scraper is down or Mercari can't be read, **Add Item still works**: the Owner sees a friendly message and enters the photo and price manually.
 
@@ -65,7 +67,7 @@ Or skip the seed and go to `/signup` to create your own business (disable with `
 ```bash
 npm test                 # money math + Mercari URL validation
 npm run test:rls         # runs the migration on an in-process Postgres (PGlite) and checks 52 tenancy/role/chart/company rules
-cd scraper && pip install -r requirements-dev.txt && pytest
+pip install -r requirements-dev.txt && pytest tests/scraper
 ```
 
 ## How it works
@@ -93,7 +95,7 @@ Each item goes through these steps:
 - Passwords are hashed by Supabase Auth; sessions live in HTTP-only cookies and are validated with `auth.getUser()` in the middleware.
 - CSRF: all mutations are Server Actions (Next.js verifies `Origin`/`Host`). XSS: React escaping, image URLs limited to `http(s)`, strict CSP and security headers in `next.config.mjs`.
 - SSRF: although any link can be *saved*, the app and the Python service only ever *request* the exact Mercari URL shapes above (other links are never fetched); the Python service uses a fixed host, disables auto-redirects (re-validating each hop), refuses non-public IPs,
-  caps the response size, and requires the `X-Scraper-Secret` header. Keep it bound to `127.0.0.1` or a private network.
+  caps the response size, and requires the `X-Scraper-Secret` header. On Vercel it is reachable on the public internet, so use a long random `SCRAPER_SECRET` (locally, keep it bound to `127.0.0.1`).
 - The service-role key is used only server-side for sign-up and for creating/removing Pasabuyer accounts, always scoped to the Owner's own company.
 
 ## Pages
@@ -120,6 +122,7 @@ src/app/actions       Server Actions (auth, items, customers, team)
 src/lib               money math, Mercari regex, Supabase clients, auth helpers
 supabase/migrations   schema + RLS + view + storage policies
 supabase/tests        RLS test suite (PGlite)
-scraper/              FastAPI Mercari service + pytest
+api/                  Python Function on Vercel: FastAPI Mercari scraper (api/index.py, api/_mercari/)
+tests/scraper/        scraper pytest suite
 scripts/seed.py       demo data
 ```

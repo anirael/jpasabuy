@@ -1,7 +1,8 @@
 """Load settings from .env.local so the scraper uses the same SCRAPER_SECRET as the web app
 without having to `set` it in the shell first.
 
-Looked up, in order: scraper/.env.local, scraper/.env, then the project root's .env.local.
+Looked up, in order: api/.env.local, api/.env, then the project root's .env.local (none exist on Vercel,
+where the real environment variables are used).
 Real environment variables always win, and a missing file is fine.
 """
 
@@ -11,9 +12,9 @@ import os
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]  # project root (contains .env.local)
-_SCRAPER = Path(__file__).resolve().parents[1]
+_API = Path(__file__).resolve().parents[1]
 
-CANDIDATES = (_SCRAPER / ".env.local", _SCRAPER / ".env", _ROOT / ".env.local")
+CANDIDATES = (_API / ".env.local", _API / ".env", _ROOT / ".env.local")
 
 
 def parse_env_line(line: str) -> tuple[str, str] | None:
