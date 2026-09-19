@@ -1,0 +1,78 @@
+// Item validation shared by the browser form (per-item "Add Item" check) and the Server Actions,
+// so both apply exactly the same rules. Pure zod — safe to import from client components.
+import { z } from "zod";
+import { isValidItemLink, ITEM_LINK_ERROR } from "@/lib/mercari";
+import { RATE_OPTIONS } from "@/lib/money";
+import { STATUSES } from "@/lib/types";
+
+const rateValues = RATE_OPTIONS.map((r) => r.toFixed(2)) as [string, ...string[]];
+
+export const itemSchema = z
+  .object({
+    mercariUrl: z.string().trim().refine(isValidItemLink, ITEM_LINK_ERROR),
+    imageUrl: z
+      .string()
+      .trim()
+      .max(2048, "Image URL is too long.")
+      .refine((v) => {
+        if (v === "") return true;
+        try {
+          const u = new URL(v);
+          return u.protocol === "https:" || u.protocol === "http:";
+        } catch {
+          return false;
+        }
+      }, "Enter a valid http(s) image URL."),
+    jpPrice: z.coerce
+      .number({ message: "Enter the price in yen." })
+      .int("Use a whole number of yen.")
+      .positive("Price must be greater than 0.")
+      .max(99_999_999, "Price is too large."),
+    rate: z.enum(rateValues, { message: "Choose a rate." }),
+    pasabuyerRate: z.enum(rateValues, { message: "Choose a Pasabuyer rate." }),
+    customerId: z.string().min(1, "Choose a customer."),
+    newCustomerName: z.string().trim().max(120).default(""),
+    newCustomerAddress: z.string().trim().max(500).default(""),
+    notes: z.string().trim().max(2000, "Notes are too long.").default(""),
+    status: z.enum(STATUSES as [string, ...string[]]),
+    /** "on" from a checkbox in FormData, or a real boolean from the multi-item form. */
+    secured: z.union([z.string(), z.boolean()]).optional(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.customerId === "new") {
+      if (!v.newCustomerName) ctx.addIssue({ code: "custom", path: ["newCustomerName"], message: "Enter the new customer's name." });
+    } else if (!z.string().uuid().safeParse(v.customerId).success) {
+      ctx.addIssue({ code: "custom", path: ["customerId"], message: "Choose a customer." });
+    }
+  });
+
+export type ParsedItem = z.output<typeof itemSchema>;
+
+/** The raw (string-valued) fields of one item as typed into the form. */
+export type ItemDraft = {
+  mercariUrl: string;
+  imageUrl: string;
+  jpPrice: string;
+  rate: string;
+  pasabuyerRate: string;
+  customerId: string;
+  newCustomerName: string;
+  newCustomerAddress: string;
+  notes: string;
+  status: string;
+  secured: boolean;
+};
+
+export const isSecured = (v: ParsedItem["secured"]) => v === true || v === "on";
+
+export const MAX_ITEMS_PER_SUBMIT = 50;
+
+/** First error per field, keyed by field name. */
+export function fieldErrorsOf(err: z.ZodError): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const issue of err.issues) {
+    const key = String(issue.path[0] ?? "form");
+    if (!out[key]) out[key] = issue.message;
+  }
+  return out;
+}
