@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { deleteItem, setItemSecured, setItemStatus } from "@/app/actions/items";
+import { deleteItem, setItemCategory, setItemSecured, setItemStatus } from "@/app/actions/items";
 import { ImageZoom } from "@/components/ui/ImageZoom";
 import { IconExpand } from "@/components/ui/icons";
 import { formatJPY, formatPHPDecimal, formatRate } from "@/lib/money";
-import { STATUS_LABEL, STATUSES, type Item, type ItemStatus } from "@/lib/types";
+import { CATEGORIES, STATUS_LABEL, STATUSES, type Item, type ItemStatus } from "@/lib/types";
 
 function OpenPill({ id }: { id: string }) {
   return (
@@ -32,6 +32,25 @@ function StatusSelect({ item, disabled, onChange }: { item: Item; disabled: bool
       {STATUSES.map((s) => (
         <option key={s} value={s}>
           {STATUS_LABEL[s]}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function CategorySelect({ item, disabled, onChange }: { item: Item; disabled: boolean; onChange: (c: string) => void }) {
+  return (
+    <select
+      aria-label="Change category"
+      value={item.category ?? ""}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+    >
+      <option value="">No category</option>
+      {CATEGORIES.map((c) => (
+        <option key={c} value={c}>
+          {c}
         </option>
       ))}
     </select>
@@ -86,7 +105,7 @@ export function OwnerInventory({ items }: { items: Item[] }) {
         <table className="w-full min-w-[1060px] text-left text-sm">
           <thead className="bg-neutral-100/70 text-neutral-500">
             <tr>
-              {["Product Image", "Customer", "Category", "JP Price", "Rate", "Total Price", "Notes", "Status", ""].map((h, i) => (
+              {["Product Image", "Customer", "Status", "Category", "JP Price", "Rate", "Total Price", "Notes", ""].map((h, i) => (
                 <th key={i} scope="col" className="whitespace-nowrap px-4 py-3.5 font-medium">
                   {h}
                 </th>
@@ -107,18 +126,20 @@ export function OwnerInventory({ items }: { items: Item[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 font-medium">{item.customers?.name ?? "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-neutral-600">{item.category ?? "—"}</td>
-                  <td className="whitespace-nowrap px-4 py-3">{formatJPY(item.jp_price)}</td>
-                  <td className="px-4 py-3">{formatRate(item.rate)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 font-medium">{item.total_price == null ? "—" : formatPHPDecimal(item.total_price)}</td>
-                  <td className="max-w-[220px] px-4 py-3 text-neutral-600">
-                    <span className="line-clamp-2 whitespace-pre-line break-words">{item.notes || "—"}</span>
-                  </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col items-start gap-2">
                       <StatusSelect item={item} disabled={busy} onChange={(s) => run(item.id, () => setItemStatus(item.id, s))} />
                       <PackedToggle item={item} disabled={busy} onChange={(v) => run(item.id, () => setItemSecured(item.id, v))} />
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <CategorySelect item={item} disabled={busy} onChange={(c) => run(item.id, () => setItemCategory(item.id, c))} />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">{formatJPY(item.jp_price)}</td>
+                  <td className="px-4 py-3">{formatRate(item.rate)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 font-medium">{item.total_price == null ? "—" : formatPHPDecimal(item.total_price)}</td>
+                  <td className="max-w-[220px] px-4 py-3 text-neutral-600">
+                    <span className="line-clamp-2 whitespace-pre-line break-words">{item.notes || "—"}</span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -147,7 +168,6 @@ export function OwnerInventory({ items }: { items: Item[] }) {
                 <ImageZoom src={item.image_url} className="h-20 w-20" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{item.customers?.name ?? "—"}</p>
-                  {item.category && <p className="text-xs text-neutral-500">{item.category}</p>}
                   <p className="mt-0.5 text-sm text-neutral-500">
                     {formatJPY(item.jp_price)} × {formatRate(item.rate)}
                   </p>
@@ -158,6 +178,9 @@ export function OwnerInventory({ items }: { items: Item[] }) {
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <StatusSelect item={item} disabled={busy} onChange={(s) => run(item.id, () => setItemStatus(item.id, s))} />
                 <PackedToggle item={item} disabled={busy} onChange={(v) => run(item.id, () => setItemSecured(item.id, v))} />
+              </div>
+              <div className="mt-3">
+                <CategorySelect item={item} disabled={busy} onChange={(c) => run(item.id, () => setItemCategory(item.id, c))} />
               </div>
               <div className="mt-3 flex gap-2 border-t border-neutral-100 pt-3">
                 <Link href={`/inventory/${item.id}`} className="btn-secondary flex-1 !py-2">

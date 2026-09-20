@@ -10,7 +10,7 @@ import { dbError, zodToState, type ActionState } from "@/lib/action-utils";
 import { isFetchableMercariUrl, mercariImageUrl, MANUAL_LINK_NOTE } from "@/lib/mercari";
 import { fieldErrorsOf, isManual, isSecured, itemSchema, MAX_ITEMS_PER_SUBMIT, type ParsedItem } from "@/lib/item-schema";
 import { DUPLICATE_CUSTOMER_ERROR, findSimilarCustomers, type CustomerLite } from "@/lib/customer-match";
-import { STATUSES, type Profile } from "@/lib/types";
+import { CATEGORIES, STATUSES, type Profile } from "@/lib/types";
 
 type Denied = { error: string };
 
@@ -259,6 +259,21 @@ export async function setItemStatus(id: string, status: string): Promise<ActionS
   revalidatePath("/inventory");
   revalidatePath("/customers");
   revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+export async function setItemCategory(id: string, category: string | null): Promise<ActionState> {
+  const auth = await ownerOrError();
+  if ("denied" in auth) return auth.denied;
+  const value = category === "" ? null : category;
+  if (!z.string().uuid().safeParse(id).success || (value !== null && !CATEGORIES.includes(value as (typeof CATEGORIES)[number]))) {
+    return { error: "Invalid request." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("items").update({ category: value }).eq("id", id);
+  if (error) return { error: dbError(error) };
+  revalidatePath("/inventory");
+  revalidatePath("/customers");
   return { ok: true };
 }
 
