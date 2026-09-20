@@ -41,7 +41,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
             <h2 id="details" className="mb-4 font-display text-base font-semibold">
               Details
             </h2>
-            <CustomerForm action={updateCustomer.bind(null, id)} customer={customer} />
+            <CustomerForm action={updateCustomer.bind(null, id)} customer={customer} customerId={id} />
           </div>
           <DeleteCustomerButton id={id} name={customer.name} />
         </section>

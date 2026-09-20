@@ -91,3 +91,13 @@ test("photo URL is derived from the item ID (normal listings only)", () => {
   assert.equal(mercariImageUrl("https://jp.mercari.com/shops/product/abc123"), null);
   assert.equal(mercariImageUrl("https://example.com/item/m5"), null);
 });
+
+test("the dark theme is offered, marks the page dark and inverts the neutral scale", async () => {
+  const { THEMES, themeCss, getTheme } = await import("@/lib/themes");
+  const dark = getTheme("dark");
+  assert.ok(THEMES.includes(dark) && dark.dark);
+  assert.ok(themeCss(dark).includes("color-scheme:dark"));
+  assert.ok(!themeCss(getTheme("default")).includes("color-scheme"));
+  const lum = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).reduce((a, v) => a + v, 0);
+  assert.ok(lum(dark.neutrals![700]) > lum(dark.neutrals![50])); // text shades are lighter than surface tints
+});

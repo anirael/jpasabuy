@@ -35,7 +35,7 @@ test("labelIndexes includes first and last and never exceeds max", () => {
 });
 
 test("every theme yields a complete CSS variable set", () => {
-  assert.equal(THEMES.length, 5);
+  assert.equal(THEMES.length, 6);
   for (const t of THEMES) {
     const css = themeCss(t);
     for (const v of ["--sidebar", "--accent", "--page", "--surface", "--ink", "--n50", "--n700", "--chart-line", "--ord-1", "--ord-3"]) {

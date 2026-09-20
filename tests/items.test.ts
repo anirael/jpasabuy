@@ -73,3 +73,23 @@ test("non-Mercari links and shop products are accepted", () => {
   }
   assert.ok(!itemSchema.safeParse({ ...base, mercariUrl: "javascript:alert(1)" }).success);
 });
+
+test("a manual listing needs no link, but a link is required otherwise", () => {
+  const manual = { ...base, manual: true, mercariUrl: "" };
+  assert.ok(itemSchema.safeParse(manual).success);
+  assert.ok(itemSchema.safeParse({ ...manual, manual: "1" }).success); // hidden input from the edit form
+  const noLink = itemSchema.safeParse({ ...base, mercariUrl: "" });
+  assert.ok(!noLink.success && fieldErrorsOf(noLink.error).mercariUrl);
+  assert.ok(!itemSchema.safeParse({ ...manual, mercariUrl: "https://jp.mercari.com/item/m1" }).success); // manual means no link
+});
+
+test("category is optional, must be one of the listed choices", () => {
+  assert.ok(itemSchema.safeParse(base).success); // omitted -> null
+  for (const category of ["Anime", "Pokemon", "Sylvanian", "Clothing", "KPop", "CD", "Plush", "Keychains", "Stationery", "One Piece", "Figurines"]) {
+    const r = itemSchema.safeParse({ ...base, category });
+    assert.ok(r.success && r.data.category === category, category);
+  }
+  const blank = itemSchema.safeParse({ ...base, category: "" });
+  assert.ok(blank.success && blank.data.category === null);
+  assert.ok(!itemSchema.safeParse({ ...base, category: "Toys" }).success);
+});

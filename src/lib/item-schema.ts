@@ -3,15 +3,20 @@
 import { z } from "zod";
 import { isValidItemLink, ITEM_LINK_ERROR } from "@/lib/mercari";
 import { RATE_OPTIONS } from "@/lib/money";
-import { STATUSES } from "@/lib/types";
+import { CATEGORIES, STATUSES } from "@/lib/types";
 
 const rateValues = RATE_OPTIONS.map((r) => r.toFixed(2)) as [string, ...string[]];
 
-const blankToNull = (v: unknown) => (v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? null : v);
+export const isManual = (v: boolean | string | undefined) => v === true || v === "1";
+
+const blankToNull =(v: unknown) => (v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? null : v);
 
 export const itemSchema = z
   .object({
-    mercariUrl: z.string().trim().refine(isValidItemLink, ITEM_LINK_ERROR),
+    /** Required unless `manual` is set; a manual listing has no link at all. Checked in superRefine. */
+    mercariUrl: z.string().trim().default(""),
+    /** "1" from the form's hidden input, or a real boolean from the multi-item form. */
+    manual: z.union([z.string(), z.boolean()]).optional(),
     imageUrl: z
       .string()
       .trim()
@@ -42,9 +47,23 @@ export const itemSchema = z
     newCustomerAddress: z.string().trim().max(500).default(""),
     notes: z.string().trim().max(2000, "Notes are too long.").default(""),
     status: z.enum(STATUSES as [string, ...string[]]),
+    category: z.preprocess(blankToNull, z.enum(CATEGORIES, { message: "Choose a category." }).nullable()),
     /** "on" from a checkbox in FormData, or a real boolean from the multi-item form. */
     secured: z.union([z.string(), z.boolean()]).optional(),
   })
+  // The link rule depends on `manual`. `when` keeps it running even when other fields have errors, so the form
+  // can show every problem at once (object-level refinements are skipped by default after a field error).
+  .refine(
+    (v) => {
+      const link = typeof v.mercariUrl === "string" ? v.mercariUrl : "";
+      return isManual(v.manual) ? link === "" : isValidItemLink(link);
+    },
+    {
+      path: ["mercariUrl"],
+      error: (iss) => (isManual((iss.input as { manual?: boolean | string } | undefined)?.manual) ? "A manual listing has no link." : ITEM_LINK_ERROR),
+      when: () => true,
+    },
+  )
   .superRefine((v, ctx) => {
     if (v.customerId === "new") {
       if (!v.newCustomerName) ctx.addIssue({ code: "custom", path: ["newCustomerName"], message: "Enter the new customer's name." });
@@ -57,6 +76,8 @@ export type ParsedItem = z.output<typeof itemSchema>;
 
 /** The raw (string-valued) fields of one item as typed into the form. */
 export type ItemDraft = {
+  /** A manual listing: no link, the photo/price/notes are entered by hand. */
+  manual: boolean;
   mercariUrl: string;
   imageUrl: string;
   jpPrice: string;
@@ -66,6 +87,7 @@ export type ItemDraft = {
   newCustomerName: string;
   newCustomerAddress: string;
   notes: string;
+  category: string;
   status: string;
   secured: boolean;
 };

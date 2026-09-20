@@ -33,6 +33,8 @@ export type Theme = {
   /** The palette as supplied, for the swatch strip in Settings. */
   palette: string[];
   roles: Roles;
+  /** A dark theme: switches the browser's own widgets (dropdown lists, scrollbars) to dark and tones down the bright status tints. */
+  dark?: boolean;
   /** Explicit neutral scale (only the default theme, which keeps Tailwind's greys). Others are mixed from ink. */
   neutrals?: Record<50 | 100 | 200 | 300 | 400 | 500 | 600 | 700, string>;
 };
@@ -144,6 +146,30 @@ export const THEMES: Theme[] = [
     },
     neutrals: { 50: "#FAFAFA", 100: "#F5F5F5", 200: "#E5E5E5", 300: "#D4D4D4", 400: "#A3A3A3", 500: "#737373", 600: "#525252", 700: "#404040" },
   },
+  {
+    id: "dark",
+    name: "Theme 6 · Dark Mode",
+    palette: ["#0B0D10", "#15181D", "#1E2228", "#2C323B", "#E8718D", "#E7E9EC"],
+    dark: true,
+    roles: {
+      sidebar: "#0B0D10",
+      sidebarText: "#9AA3AF",
+      sidebarHover: "#F1F3F5",
+      navActive: "#E8718D",
+      navActiveInk: "#15181D",
+      accent: "#E8718D",
+      accentDark: "#F29BB0", // used for hover and for text on dark surfaces, so it is the lighter pink
+      accentSoft: "#3A2129",
+      brand: "#7CC55F",
+      page: "#15181D",
+      surface: "#1E2228", // cards, inputs and every "white" surface; text-white therefore becomes this dark shade too
+      ink: "#E7E9EC",
+      chartLine: "#F29BB0",
+      ordinal: ["#F7C4D1", "#E8718D", "#B24A66"],
+    },
+    // Inverted scale: 50 = a faint lift above the surface, 700 = near-white text.
+    neutrals: { 50: "#252A31", 100: "#2A3038", 200: "#363D47", 300: "#485160", 400: "#7F8998", 500: "#9AA3AF", 600: "#B4BBC6", 700: "#CDD2DA" },
+  },
 ];
 
 export const DEFAULT_THEME_ID = "default";
@@ -209,7 +235,8 @@ export function themeCss(theme: Theme): string {
     "--ord-3": r.ordinal[2],
     ...Object.fromEntries(Object.entries(neutrals).map(([k, v]) => [`--n${k}`, v])),
   };
-  return `:root{${Object.entries(vars)
+  const declarations = Object.entries(vars)
     .map(([k, v]) => `${k}:${channels(v)}`)
-    .join(";")}}`;
+    .join(";");
+  return `:root{${declarations}${theme.dark ? ";color-scheme:dark" : ""}}`;
 }

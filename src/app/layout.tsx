@@ -15,11 +15,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Theme id comes from a cookie but is only used to pick from the fixed THEMES list, so the CSS
-  // injected below is always one of our own constants.
   const theme = getTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
+    <html lang="en" data-mode={theme.dark ? "dark" : "light"} className={`${inter.variable} ${poppins.variable}`}>
       <head>
         <style id="theme-vars" dangerouslySetInnerHTML={{ __html: themeCss(theme) }} />
       </head>

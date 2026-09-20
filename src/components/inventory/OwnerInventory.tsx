@@ -83,10 +83,10 @@ export function OwnerInventory({ items }: { items: Item[] }) {
 
       {/* Desktop / tablet table */}
       <div className="hidden overflow-x-auto rounded-2xl border border-neutral-200 xl:block">
-        <table className="w-full min-w-[980px] text-left text-sm">
+        <table className="w-full min-w-[1060px] text-left text-sm">
           <thead className="bg-neutral-100/70 text-neutral-500">
             <tr>
-              {["Product Image", "Customer", "JP Price", "Rate", "Total Price", "Notes", "Status", ""].map((h, i) => (
+              {["Product Image", "Customer", "Category", "JP Price", "Rate", "Total Price", "Notes", "Status", ""].map((h, i) => (
                 <th key={i} scope="col" className="whitespace-nowrap px-4 py-3.5 font-medium">
                   {h}
                 </th>
@@ -107,6 +107,7 @@ export function OwnerInventory({ items }: { items: Item[] }) {
                     </div>
                   </td>
                   <td className="px-4 py-3 font-medium">{item.customers?.name ?? "—"}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-neutral-600">{item.category ?? "—"}</td>
                   <td className="whitespace-nowrap px-4 py-3">{formatJPY(item.jp_price)}</td>
                   <td className="px-4 py-3">{formatRate(item.rate)}</td>
                   <td className="whitespace-nowrap px-4 py-3 font-medium">{item.total_price == null ? "—" : formatPHPDecimal(item.total_price)}</td>
@@ -146,6 +147,7 @@ export function OwnerInventory({ items }: { items: Item[] }) {
                 <ImageZoom src={item.image_url} className="h-20 w-20" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{item.customers?.name ?? "—"}</p>
+                  {item.category && <p className="text-xs text-neutral-500">{item.category}</p>}
                   <p className="mt-0.5 text-sm text-neutral-500">
                     {formatJPY(item.jp_price)} × {formatRate(item.rate)}
                   </p>

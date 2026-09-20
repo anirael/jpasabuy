@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { createItems, fetchMercari, uploadItemImage } from "@/app/actions/items";
+import { SimilarCustomers } from "@/components/customers/SimilarCustomers";
 import { CustomerPicker } from "@/components/inventory/CustomerPicker";
 import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 import { IconPlus } from "@/components/ui/icons";
 import { ItemImage } from "@/components/ui/ItemImage";
+import { DUPLICATE_CUSTOMER_ERROR } from "@/lib/customer-match";
 import { fieldErrorsOf, itemSchema, MAX_ITEMS_PER_SUBMIT, type ItemDraft } from "@/lib/item-schema";
 import { isFetchableMercariUrl, isValidItemLink, ITEM_LINK_ERROR, MANUAL_LINK_NOTE } from "@/lib/mercari";
 import { calc, formatJPY, formatPHP, RATE_OPTIONS } from "@/lib/money";
 import type { ActionState } from "@/lib/action-utils";
-import { STATUS_LABEL, STATUSES, type Item, type ItemStatus } from "@/lib/types";
+import { CATEGORIES, STATUS_LABEL, STATUSES, type Item, type ItemStatus } from "@/lib/types";
 
 type Props = {
   /** Edit mode only: the Server Action that saves changes to `item`. In create mode the form queues items and submits them together. */
@@ -40,6 +42,8 @@ export function ItemForm({ action, customers, item }: Props) {
   const isEdit = !!item;
   const [state, formAction] = useActionState(action ?? noopAction, null);
 
+  // A manual listing has no link: the photo, price and notes are entered by hand. Existing items without a link open in this mode.
+  const [manual, setManual] = useState(item ? item.mercari_url == null : false);
   const [mercariUrl, setMercariUrl] = useState(item?.mercari_url ?? "");
   const [urlTouched, setUrlTouched] = useState(false);
   const [imageUrl, setImageUrl] = useState(item?.image_url ?? "");
@@ -48,11 +52,13 @@ export function ItemForm({ action, customers, item }: Props) {
   const [pasabuyerRate, setPasabuyerRate] = useState(item?.pasabuyer_rate != null ? Number(item.pasabuyer_rate).toFixed(2) : "");
   const [customerId, setCustomerId] = useState(item?.customer_id ?? "");
   const [status, setStatus] = useState<ItemStatus>(item?.status ?? "SECURED");
+  const [category, setCategory] = useState<string>(item?.category ?? "");
   // Controlled (not defaultValue) so React 19 does not reset them after a failed submit.
   const [secured, setSecured] = useState(item?.secured ?? false);
   const [notes, setNotes] = useState(item?.notes ?? "");
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
+  const [exactDuplicate, setExactDuplicate] = useState(false);
   const [fetchState, setFetchState] = useState<FetchState>({ kind: "idle" });
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -74,11 +80,13 @@ export function ItemForm({ action, customers, item }: Props) {
   const fe = { ...(state?.fieldErrors ?? {}), ...clientErrors };
 
   const urlValid = isValidItemLink(mercariUrl.trim());
-  const urlError =
-    fe.mercariUrl ?? (urlTouched && mercariUrl.trim() !== "" && !urlValid ? ITEM_LINK_ERROR : urlTouched && mercariUrl.trim() === "" ? "Paste the Mercari link." : undefined);
+  const urlError = manual
+    ? undefined
+    : fe.mercariUrl ?? (urlTouched && mercariUrl.trim() !== "" && !urlValid ? ITEM_LINK_ERROR : urlTouched && mercariUrl.trim() === "" ? "Paste the Mercari link." : undefined);
 
   const currentDraft = (): ItemDraft => ({
-    mercariUrl: mercariUrl.trim(),
+    manual,
+    mercariUrl: manual ? "" : mercariUrl.trim(),
     imageUrl,
     jpPrice,
     rate,
@@ -87,6 +95,7 @@ export function ItemForm({ action, customers, item }: Props) {
     newCustomerName: newName,
     newCustomerAddress: newAddress,
     notes,
+    category,
     status,
     secured,
   });
@@ -100,7 +109,7 @@ export function ItemForm({ action, customers, item }: Props) {
   // A field's error goes away as soon as that field is edited (rather than waiting for the next Add Item click).
   const prevFields = useRef<Record<string, unknown>>({});
   useEffect(() => {
-    const cur: Record<string, unknown> = { mercariUrl, imageUrl, jpPrice, rate, pasabuyerRate, customerId, newCustomerName: newName, notes, status };
+    const cur: Record<string, unknown> = { mercariUrl, imageUrl, jpPrice, rate, pasabuyerRate, customerId, newCustomerName: newName, notes, category, status };
     const prev = prevFields.current;
     prevFields.current = cur;
     setClientErrors((errs) => {
@@ -200,8 +209,12 @@ export function ItemForm({ action, customers, item }: Props) {
       setClientErrors(fieldErrorsOf(parsed.error));
       return null;
     }
-    if (existing.some((q) => q.draft.mercariUrl === draft.mercariUrl)) {
+    if (!draft.manual && existing.some((q) => q.draft.mercariUrl === draft.mercariUrl)) {
       setClientErrors({ mercariUrl: "This link is already in your list." });
+      return null;
+    }
+    if (draft.customerId === "new" && exactDuplicate) {
+      setClientErrors({ newCustomerName: DUPLICATE_CUSTOMER_ERROR });
       return null;
     }
     setClientErrors({});
@@ -223,7 +236,7 @@ export function ItemForm({ action, customers, item }: Props) {
     setImageUrl("");
     setJpPrice("");
     setNotes("");
-    setSecured(false);
+    setSecured(false); // category is kept, like the customer and rates: an order is often all one kind of item
     setUrlTouched(false);
     setFetchState({ kind: "idle" });
     lastFetched.current = null;
@@ -269,6 +282,7 @@ export function ItemForm({ action, customers, item }: Props) {
     if (!q) return;
     const d = q.draft;
     lastFetched.current = d.mercariUrl; // do not re-fetch and overwrite what was already entered
+    setManual(d.manual);
     setMercariUrl(d.mercariUrl);
     setImageUrl(d.imageUrl);
     setJpPrice(d.jpPrice);
@@ -278,12 +292,30 @@ export function ItemForm({ action, customers, item }: Props) {
     setNewName(d.newCustomerName);
     setNewAddress(d.newCustomerAddress);
     setNotes(d.notes);
+    setCategory(d.category);
     setStatus(d.status as ItemStatus);
     setSecured(d.secured);
     setQueue((cur) => cur.filter((x) => x.key !== key));
     setSubmitError(null);
     setAddedNote(null);
     urlRef.current?.focus();
+  }
+
+  function enterManual() {
+    onUrlChange(""); // drops anything the last auto-fetch filled in and resets the fetch notice
+    setManual(true);
+    setUrlTouched(false);
+    setClientErrors((errs) => {
+      const { mercariUrl: _drop, ...rest } = errs;
+      return rest;
+    });
+    setAddedNote(null);
+  }
+
+  function leaveManual() {
+    setManual(false);
+    setAddedNote(null);
+    setTimeout(() => urlRef.current?.focus(), 0);
   }
 
   const removeQueued = (key: string) => setQueue((cur) => cur.filter((x) => x.key !== key));
@@ -296,7 +328,7 @@ export function ItemForm({ action, customers, item }: Props) {
         ? {
             action: (fd: FormData) => {
               setUrlTouched(true);
-              if (!isValidItemLink(mercariUrl.trim())) return; // client-side gate; the server re-validates
+              if (!manual && !isValidItemLink(mercariUrl.trim())) return; // client-side gate; the server re-validates
               formAction(fd);
             },
           }
@@ -316,28 +348,45 @@ export function ItemForm({ action, customers, item }: Props) {
 
         <FormMessage state={state} />
 
-        <Field
-          label="Item link"
-          name="mercariUrl"
-          error={urlError}
-          hint="Mercari links (…/item/m123, …/shops/product/abc123, with or without /en/) fetch the photo and price for you. Any other link needs to be manually added."
-        >
-          <input
-            ref={urlRef}
-            id="mercariUrl"
+        <input type="hidden" name="manual" value={manual ? "1" : ""} />
+        {manual ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+            <p className="min-w-0">
+              <strong className="font-semibold">Manual listing.</strong> No link needed. Add the photo, price and notes below.
+            </p>
+            <button type="button" onClick={leaveManual} className="shrink-0 font-medium text-accent-dark hover:underline">
+              Use a link instead
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+          <Field
+            label="Item link"
             name="mercariUrl"
-            type="url"
-            inputMode="url"
-            autoComplete="off"
-            placeholder="https://jp.mercari.com/item/m…"
-            value={mercariUrl}
-            onChange={(e) => onUrlChange(e.target.value)}
-            onBlur={() => setUrlTouched(true)}
-            aria-invalid={!!urlError}
-            aria-describedby={urlError ? "mercariUrl-error" : undefined}
-            className={`field ${urlError ? "field-error" : ""}`}
-          />
-        </Field>
+            error={urlError}
+            hint="Mercari links (…/item/m123, …/shops/product/abc123, with or without /en/) fetch the photo and price for you. Any other link needs to be manually added."
+          >
+            <input
+              ref={urlRef}
+              id="mercariUrl"
+              name="mercariUrl"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              placeholder="https://jp.mercari.com/item/m…"
+              value={mercariUrl}
+              onChange={(e) => onUrlChange(e.target.value)}
+              onBlur={() => setUrlTouched(true)}
+              aria-invalid={!!urlError}
+              aria-describedby={urlError ? "mercariUrl-error" : undefined}
+              className={`field ${urlError ? "field-error" : ""}`}
+            />
+          </Field>
+            <button type="button" onClick={enterManual} className="btn-secondary !py-1.5">
+              <IconPlus /> Manual Listing
+            </button>
+          </div>
+        )}
 
         {fetchState.kind === "loading" && (
           <p role="status" className="rounded-xl bg-neutral-50 px-4 py-2.5 text-sm text-neutral-600">
@@ -444,13 +493,23 @@ export function ItemForm({ action, customers, item }: Props) {
         </Field>
 
         {customerId === "new" && (
-          <div className="space-y-4 rounded-2xl bg-neutral-50 p-4">
+          <div className="space-y-4 rounded-2xl border border-accent/40 bg-accent/10 p-4">
             <Field label="New customer name" name="newCustomerName" error={fe.newCustomerName}>
               <input id="newCustomerName" name="newCustomerName" maxLength={120} value={newName} onChange={(e) => setNewName(e.target.value)} className={`field ${fe.newCustomerName ? "field-error" : ""}`} />
             </Field>
             <Field label="Shipping address" name="newCustomerAddress" error={fe.newCustomerAddress}>
               <textarea id="newCustomerAddress" name="newCustomerAddress" rows={2} maxLength={500} value={newAddress} onChange={(e) => setNewAddress(e.target.value)} className="field" />
             </Field>
+            <SimilarCustomers
+              name={newName}
+              address={newAddress}
+              onExact={setExactDuplicate}
+              onUse={(id) => {
+                setCustomerId(id);
+                setNewName("");
+                setNewAddress("");
+              }}
+            />
             {!isEdit && <p className="text-xs text-neutral-500">Items you add with the same new customer name and address share one customer record.</p>}
           </div>
         )}
@@ -465,13 +524,22 @@ export function ItemForm({ action, customers, item }: Props) {
               ))}
             </select>
           </Field>
-          <div className="flex items-end pb-2.5">
-            <label className="inline-flex cursor-pointer items-center gap-2.5 text-sm font-medium">
-              <input type="checkbox" name="secured" checked={secured} onChange={(e) => setSecured(e.target.checked)} className="h-4 w-4 rounded border-neutral-300 accent-accent" />
-              Packed
-            </label>
-          </div>
+          <Field label="Category (optional)" name="category" error={fe.category}>
+            <select id="category" name="category" value={category} onChange={(e) => setCategory(e.target.value)} className={`field ${fe.category ? "field-error" : ""}`}>
+              <option value="">Select…</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
+
+        <label className="inline-flex cursor-pointer items-center gap-2.5 text-sm font-medium">
+          <input type="checkbox" name="secured" checked={secured} onChange={(e) => setSecured(e.target.checked)} className="h-4 w-4 rounded border-neutral-300 accent-accent" />
+          Packed
+        </label>
 
         <Field label="Notes (optional)" name="notes" error={fe.notes}>
           <textarea id="notes" name="notes" rows={3} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} className={`field ${fe.notes ? "field-error" : ""}`} />

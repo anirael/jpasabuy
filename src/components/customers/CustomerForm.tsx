@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
+import { SimilarCustomers } from "@/components/customers/SimilarCustomers";
 import { Field, FormMessage, SubmitButton } from "@/components/ui/form";
 import type { ActionState } from "@/lib/action-utils";
 
 export function CustomerForm({
   action,
   customer,
+  customerId,
   cancelHref = "/customers",
 }: {
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   customer?: { name: string; shipping_address: string };
+  /** The customer being edited, so the duplicate check does not flag it against itself. */
+  customerId?: string;
   cancelHref?: string;
 }) {
   const [state, formAction] = useActionState(action, null);
@@ -37,6 +41,7 @@ export function CustomerForm({
           className={`field ${fe.shippingAddress ? "field-error" : ""}`}
         />
       </Field>
+      <SimilarCustomers name={name} address={address} excludeId={customerId} />
       <div className="flex flex-wrap gap-3">
         <SubmitButton>{customer ? "Save changes" : "Add customer"}</SubmitButton>
         <Link href={cancelHref} className="btn-secondary">

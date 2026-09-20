@@ -80,6 +80,9 @@ await as(ownerA, async () => {
   ok("owner A: javascript:/ftp: links rejected", !(await linkOk("javascript:alert(1)")) && !(await linkOk("ftp://example.com/x")));
   const ids = await q(`select mercari_url, mercari_item_id from items where mercari_url in ('https://jp.mercari.com/shops/product/123qwerty345','https://example.com/products/some-thing?ref=1','https://jp.mercari.com/item/m13') order by mercari_url`);
   ok("item id is the last path segment (m13 / 123qwerty345 / some-thing)", ids.map((r) => r.mercari_item_id).sort().join() === "123qwerty345,m13,some-thing", JSON.stringify(ids));
+  ok("owner A: manual listing (NULL link) accepted, item id is NULL", (await err(`insert into items(customer_id,mercari_url,notes) values ('${custA}',NULL,'manual-nolink')`)) === null && (await q(`select mercari_item_id from items where notes='manual-nolink'`))[0].mercari_item_id === null);
+  const catOk = async (c) => (await err(`insert into items(customer_id,mercari_url,category) values ('${custA}','https://example.com/cat',${c})`)) === null;
+  ok("owner A: category accepts a listed value or NULL, rejects anything else", (await catOk("'One Piece'")) && (await catOk("NULL")) && !(await catOk("'Toys'")));
   ok("owner A: rate outside .40-.50 rejected", (await err(`insert into items(customer_id,mercari_url,jp_price,rate,pasabuyer_rate) values ('${custA}','https://jp.mercari.com/en/item/m12',500,0.39,0.40)`)) !== null);
   ok("owner A: cannot delete customer that still has items (RESTRICT)", (await err(`delete from customers where id='${custA}'`)) !== null);
 

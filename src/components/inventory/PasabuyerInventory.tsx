@@ -37,9 +37,11 @@ export function PasabuyerInventory({ items }: { items: PasabuyerItem[] }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center">
                     <ImageZoom src={item.image_url} />
-                    <span className="-ml-2.5">
-                      <OpenMercari url={item.mercari_url} />
-                    </span>
+                    {item.mercari_url && (
+                      <span className="-ml-2.5">
+                        <OpenMercari url={item.mercari_url} />
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3 font-mono text-xs">{item.mercari_item_id ?? "—"}</td>
@@ -62,9 +64,11 @@ export function PasabuyerInventory({ items }: { items: PasabuyerItem[] }) {
               </div>
             </div>
             {item.notes && <p className="mt-3 whitespace-pre-line break-words text-sm text-neutral-600">{item.notes}</p>}
-            <div className="mt-3">
-              <OpenMercari url={item.mercari_url} />
-            </div>
+            {item.mercari_url && (
+              <div className="mt-3">
+                <OpenMercari url={item.mercari_url} />
+              </div>
+            )}
           </li>
         ))}
       </ul>

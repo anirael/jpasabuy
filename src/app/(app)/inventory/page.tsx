@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { OwnerInventory } from "@/components/inventory/OwnerInventory";
 import { PasabuyerInventory } from "@/components/inventory/PasabuyerInventory";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Pagination } from "@/components/ui/Pagination";
 import { IconPlus } from "@/components/ui/icons";
+import { DEFAULT_PAGE_SIZE, getPaging } from "@/lib/pagination";
 import { STATUS_LABEL, STATUSES, type Item, type ItemStatus, type PasabuyerItem } from "@/lib/types";
 
 export const metadata = { title: "Inventory — Calico Cove" };
@@ -25,7 +27,13 @@ function Empty({ text, action }: { text: string; action?: React.ReactNode }) {
   );
 }
 
-export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
+/** The chosen page size, carried through the search box and tabs (only when it is a valid, non-default size). */
+function keepSize(perPage: string | undefined): Record<string, string> {
+  const { perPage: n } = getPaging({ perPage }, 0);
+  return n !== DEFAULT_PAGE_SIZE ? { perPage: String(n) } : {};
+}
+
+export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; page?: string; perPage?: string }> }) {
   const profile = await requireProfile();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 100);
@@ -39,10 +47,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       .order("created_at", { ascending: false })
       .limit(MAX_ROWS);
     const all = (data ?? []) as PasabuyerItem[];
-    const items = q ? all.filter((i) => matches(q, i.notes, i.mercari_item_id)) : all;
+    const found = q ? all.filter((i) => matches(q, i.notes, i.mercari_item_id)) : all;
+    const paging = getPaging(sp, found.length);
+    const items = found.slice(paging.start, paging.end);
     return (
       <>
-        <PageHeader title="Inventory" subtitle="Items that are onhand" search={{ action: "/inventory", defaultValue: q }} />
+        <PageHeader title="Inventory" subtitle="Items that are onhand" search={{ action: "/inventory", defaultValue: q, hidden: keepSize(sp.perPage) }} />
         {error ? (
           <p role="alert" className="text-sm text-red-700">
             Couldn&apos;t load items. Please refresh.
@@ -50,7 +60,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
         ) : items.length === 0 ? (
           <Empty text={q ? "No onhand items match your search." : "No onhand items right now."} />
         ) : (
-          <PasabuyerInventory items={items} />
+          <>
+            <PasabuyerInventory items={items} />
+            <Pagination paging={paging} basePath="/inventory" params={q ? { q } : {}} />
+          </>
         )}
       </>
     );
@@ -64,15 +77,19 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
     .order("created_at", { ascending: false })
     .limit(MAX_ROWS);
   const all = (data ?? []) as Item[];
-  const counts = Object.fromEntries(STATUSES.map((s) => [s, all.filter((i) => i.status === s).length])) as Record<ItemStatus, number>;
-  const inTab = all.filter((i) => i.status === status);
-  const items = q ? inTab.filter((i) => matches(q, i.customers?.name, i.notes, i.mercari_item_id)) : inTab;
+  // Search applies across every tab, so each tab's count is the number of items that match the search in that tab.
+  const searched = q ? all.filter((i) => matches(q, i.customers?.name, i.notes, i.mercari_item_id, i.category)) : all;
+  const counts = Object.fromEntries(STATUSES.map((s) => [s, searched.filter((i) => i.status === s).length])) as Record<ItemStatus, number>;
+  const inTab = searched.filter((i) => i.status === status);
+  const paging = getPaging(sp, inTab.length);
+  const items = inTab.slice(paging.start, paging.end);
+  const size = keepSize(sp.perPage);
 
   return (
     <>
       <PageHeader
         title="Inventory"
-        search={{ action: "/inventory", defaultValue: q, hidden: { status } }}
+        search={{ action: "/inventory", defaultValue: q, hidden: { status, ...size } }}
         actions={
           <Link href="/inventory/new" className="btn-primary shrink-0">
             <IconPlus /> Add item
@@ -86,7 +103,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
             key={s}
             role="tab"
             aria-selected={s === status}
-            href={`/inventory?status=${s}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            href={`/inventory?status=${s}${q ? `&q=${encodeURIComponent(q)}` : ""}${size.perPage ? `&perPage=${size.perPage}` : ""}`}
             className={`flex-1 whitespace-nowrap rounded-full px-4 py-2 text-center text-sm font-medium transition ${
               s === status ? "bg-white text-ink shadow-sm" : "text-neutral-500 hover:text-ink"
             }`}
@@ -112,7 +129,10 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
           }
         />
       ) : (
-        <OwnerInventory items={items} />
+        <>
+          <OwnerInventory items={items} />
+          <Pagination paging={paging} basePath="/inventory" params={{ status, ...(q ? { q } : {}) }} />
+        </>
       )}
     </>
   );

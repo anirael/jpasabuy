@@ -8,7 +8,8 @@ import { assertOwner, ForbiddenError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { dbError, zodToState, type ActionState } from "@/lib/action-utils";
 import { isFetchableMercariUrl, mercariImageUrl, MANUAL_LINK_NOTE } from "@/lib/mercari";
-import { fieldErrorsOf, isSecured, itemSchema, MAX_ITEMS_PER_SUBMIT, type ParsedItem } from "@/lib/item-schema";
+import { fieldErrorsOf, isManual, isSecured, itemSchema, MAX_ITEMS_PER_SUBMIT, type ParsedItem } from "@/lib/item-schema";
+import { DUPLICATE_CUSTOMER_ERROR, findSimilarCustomers, type CustomerLite } from "@/lib/customer-match";
 import { STATUSES, type Profile } from "@/lib/types";
 
 type Denied = { error: string };
@@ -136,6 +137,14 @@ export async function createItems(drafts: unknown): Promise<ActionState> {
   }
 
   const supabase = await createClient();
+  // Refuse to create a customer that already exists (same name and address); the form warns about this earlier.
+  const wantsNew = items.filter((v) => v.customerId === "new");
+  if (wantsNew.length > 0) {
+    const { data: existing, error } = await supabase.from("customers").select("id, name, shipping_address").limit(5000);
+    if (error) return { error: dbError(error) };
+    const dup = wantsNew.find((v) => findSimilarCustomers((existing ?? []) as CustomerLite[], v.newCustomerName, v.newCustomerAddress).some((m) => m.exact));
+    if (dup) return { error: `${dup.newCustomerName}: ${DUPLICATE_CUSTOMER_ERROR}` };
+  }
   const newCustomers = new Map<string, string>();
   const createdIds: string[] = [];
   const rollback = async () => {
@@ -166,12 +175,13 @@ export async function createItems(drafts: unknown): Promise<ActionState> {
     }
     rows.push({
       customer_id: customerId,
-      mercari_url: v.mercariUrl,
+      mercari_url: isManual(v.manual) ? null : v.mercariUrl,
       image_url: v.imageUrl || null,
       jp_price: v.jpPrice,
       rate: v.rate,
       pasabuyer_rate: v.pasabuyerRate,
       status: v.status,
+      category: v.category,
       secured: isSecured(v.secured),
       notes: v.notes,
     });
@@ -200,6 +210,10 @@ export async function updateItem(id: string, _prev: ActionState, formData: FormD
   let customerId = v.customerId;
   let createdCustomerId: string | null = null;
   if (customerId === "new") {
+    const { data: existing } = await supabase.from("customers").select("id, name, shipping_address").limit(5000);
+    if (findSimilarCustomers((existing ?? []) as CustomerLite[], v.newCustomerName, v.newCustomerAddress).some((m) => m.exact)) {
+      return { error: DUPLICATE_CUSTOMER_ERROR, fieldErrors: { newCustomerName: DUPLICATE_CUSTOMER_ERROR } };
+    }
     const { data, error } = await supabase
       .from("customers")
       .insert({ name: v.newCustomerName, shipping_address: v.newCustomerAddress })
@@ -213,12 +227,13 @@ export async function updateItem(id: string, _prev: ActionState, formData: FormD
     .from("items")
     .update({
       customer_id: customerId,
-      mercari_url: v.mercariUrl,
+      mercari_url: isManual(v.manual) ? null : v.mercariUrl,
       image_url: v.imageUrl || null,
       jp_price: v.jpPrice,
       rate: v.rate,
       pasabuyer_rate: v.pasabuyerRate,
       status: v.status,
+      category: v.category,
       secured: isSecured(v.secured),
       notes: v.notes,
     })

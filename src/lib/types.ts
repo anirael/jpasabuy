@@ -9,6 +9,10 @@ export const STATUS_LABEL: Record<ItemStatus, string> = {
 };
 export const STATUSES: ItemStatus[] = ["SECURED", "JP_ADDRESS", "ONHAND", "DELIVERED"];
 
+/** Item categories (optional on an item). Keep in sync with the CHECK constraint in supabase/migrations/20260110000000_item_category.sql. */
+export const CATEGORIES = ["Anime", "Pokemon", "Sylvanian", "Clothing", "KPop", "CD", "Plush", "Keychains", "Stationery", "One Piece", "Figurines"] as const;
+export type Category = (typeof CATEGORIES)[number];
+
 export type Profile = { id: string; company_id: string; name: string; email: string; role: Role };
 
 export type Customer = { id: string; name: string; shipping_address: string; created_at: string };
@@ -16,7 +20,8 @@ export type Customer = { id: string; name: string; shipping_address: string; cre
 export type Item = {
   id: string;
   customer_id: string;
-  mercari_url: string;
+  /** NULL for a manual listing (created without a link). */
+  mercari_url: string | null;
   mercari_item_id: string | null;
   image_url: string | null;
   // Price and rates are optional, so the values computed from them are NULL until they are set.
@@ -27,6 +32,7 @@ export type Item = {
   pasabuyer_cost: string | number | null;
   profit: string | number | null;
   status: ItemStatus;
+  category: Category | null;
   /** The separate "Packed" checkbox (the column keeps its original name; not the same as the Secured status). */
   secured: boolean;
   notes: string;
@@ -38,7 +44,8 @@ export type Item = {
 /** What a Pasabuyer is allowed to see (from the pasabuyer_items view). */
 export type PasabuyerItem = {
   id: string;
-  mercari_url: string;
+  /** NULL for a manual listing (created without a link). */
+  mercari_url: string | null;
   mercari_item_id: string | null;
   image_url: string | null;
   notes: string;
