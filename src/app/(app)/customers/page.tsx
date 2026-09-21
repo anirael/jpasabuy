@@ -5,7 +5,7 @@ import { HiddenAddress } from "@/components/customers/HiddenAddress";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IconPlus } from "@/components/ui/icons";
 
-export const metadata = { title: "Client Information — Calico Cove" };
+export const metadata = { title: "Client Information" };
 
 type Row = { id: string; name: string; shipping_address: string };
 

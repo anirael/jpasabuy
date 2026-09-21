@@ -4,7 +4,7 @@ import { CreatePasabuyerForm, RemovePasabuyerButton } from "@/components/team/Te
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { Profile } from "@/lib/types";
 
-export const metadata = { title: "Team — Calico Cove" };
+export const metadata = { title: "Team" };
 
 export default async function TeamPage() {
   const owner = await requireOwner();

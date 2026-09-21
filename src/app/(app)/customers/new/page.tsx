@@ -3,7 +3,7 @@ import { createCustomer } from "@/app/actions/customers";
 import { CustomerForm } from "@/components/customers/CustomerForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export const metadata = { title: "Add customer — Calico Cove" };
+export const metadata = { title: "Add customer" };
 
 export default async function NewCustomerPage() {
   await requireOwner();

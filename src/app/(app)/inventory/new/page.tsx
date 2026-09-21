@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ItemForm } from "@/components/inventory/ItemForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export const metadata = { title: "Add items — Calico Cove" };
+export const metadata = { title: "Add items" };
 
 export default async function NewItemPage() {
   await requireOwner();

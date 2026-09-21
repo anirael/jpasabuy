@@ -1,4 +1,4 @@
-# Calico Cove — Japan Pasabuy Inventory System
+# Japan Pasabuy Inventory System
 
 Multi-user web app for a Japan pasabuy (buy-for-others) business. The **Owner** logs Mercari Japan items, moves them through
 `JP Address → Onhand → Delivered`, manages customers and sees sales stats. **Pasabuyers** get a read-only list of Onhand items.
@@ -102,7 +102,7 @@ Each item goes through these steps:
 - **Dashboard**: Total Delivered, Total Sales and New Clients, an *Order status* donut (Secured / Japan Address / Onhand / Delivered) and a *Profit* line chart that can be grouped Daily, Monthly or Yearly. Both charts sit under the same date filter.
 - **Client Information**: customer name and address only. Addresses are masked; click the eye to reveal one. A customer's own page (`/customers/<id>`) keeps the full details and their item list.
 - **Inventory**: click a photo to enlarge it in a modal (click it again, click outside, or press Esc to close). No new page opens.
-- **Settings** (above Logout): every role can pick one of 5 color themes (saved in a cookie, so per browser). The **Owner** can also rename the company and choose its sidebar icon from 8 designs (clover, sakura, daisy, leaf, heart, gift, paper plane, shopping bag). The company name and icon replace the "Calico Cove" heading in the sidebar for the whole team. The sign-in page has no company yet, so it keeps the default Calico Cove branding.
+- **Settings** (above Logout): every role can pick one of 5 color themes (saved in a cookie, so per browser). The **Owner** can also rename the company and choose its sidebar icon from 8 designs (clover, sakura, daisy, leaf, heart, gift, paper plane, shopping bag). The company name and icon replace the "Company" heading in the sidebar for the whole team. The sign-in page has no company yet, so it keeps the default "Company" branding.
 - **Loading**: every module shows a skeleton placeholder (`loading.tsx`) while its data loads.
 
 ## Assumptions (change if you disagree)

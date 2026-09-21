@@ -9,7 +9,7 @@ import { IconPlus } from "@/components/ui/icons";
 import { DEFAULT_PAGE_SIZE, getPaging } from "@/lib/pagination";
 import { STATUS_LABEL, STATUSES, type Item, type ItemStatus, type PasabuyerItem } from "@/lib/types";
 
-export const metadata = { title: "Inventory — Calico Cove" };
+export const metadata = { title: "Inventory" };
 
 const MAX_ROWS = 1000;
 

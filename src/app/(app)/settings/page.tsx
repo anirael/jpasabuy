@@ -5,7 +5,7 @@ import { CompanyNameForm, LogoPicker } from "@/components/settings/CompanySettin
 import { ThemePicker } from "@/components/settings/ThemePicker";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export const metadata = { title: "Settings — Calico Cove" };
+export const metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const profile = await requireProfile();

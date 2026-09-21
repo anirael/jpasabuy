@@ -39,6 +39,25 @@ html[data-mode="dark"] .text-emerald-600, html[data-mode="dark"] .text-emerald-7
 html[data-mode="dark"] .text-amber-700, html[data-mode="dark"] .text-amber-800, html[data-mode="dark"] .text-amber-900 { color: rgb(252 211 77); }
 html[data-mode="dark"] .hover\:bg-red-50:hover,html[data-mode="dark"] .btn-danger:hover { background-color: rgb(248 113 113 / 0.18); }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+}
+
 @layer components {
   .field {
     @apply w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-neutral-400 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:bg-neutral-50 disabled:text-neutral-400;

@@ -14,7 +14,7 @@ export const LOGOS = [
 export type LogoId = (typeof LOGOS)[number]["id"];
 
 export const DEFAULT_LOGO: LogoId = "clover";
-export const DEFAULT_COMPANY_NAME = "Calico Cove";
+export const DEFAULT_COMPANY_NAME = "JP Pasabuy Inventory System";
 
 export function isLogoId(v: unknown): v is LogoId {
   return typeof v === "string" && LOGOS.some((l) => l.id === v);

@@ -8,7 +8,7 @@ import { ProfitLine, type ProfitPoint } from "@/components/charts/ProfitLine";
 import { StatusDonut } from "@/components/charts/StatusDonut";
 import { PageHeader } from "@/components/ui/PageHeader";
 
-export const metadata = { title: "Dashboard — Calico Cove" };
+export const metadata = { title: "Dashboard" };
 
 type Stats = { total_delivered: number; total_sales: string; total_profit: string; new_clients: number };
 type Charts = { status: { SECURED: number; JP_ADDRESS: number; ONHAND: number; DELIVERED: number }; series: ProfitPoint[] };

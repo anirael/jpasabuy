@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-poppins", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Calico Cove — Pasabuy Inventory",
+  title: "Pasabuy Inventory",
   description: "Inventory, customers and sales for your Japan pasabuy business.",
 };
 

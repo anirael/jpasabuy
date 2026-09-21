@@ -17,7 +17,7 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
-COMPANY = "Calico Cove"
+COMPANY = "CC"
 OWNER = {"email": "owner@example.com", "password": "Owner1234!", "name": "Claudia Reyes"}
 PASABUYER = {"email": "pasabuyer@example.com", "password": "Pasabuyer1234!", "name": "Haruka Tanaka"}
 

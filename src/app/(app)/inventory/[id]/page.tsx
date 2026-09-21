@@ -7,7 +7,7 @@ import { ItemForm } from "@/components/inventory/ItemForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import type { Item } from "@/lib/types";
 
-export const metadata = { title: "Edit item — Calico Cove" };
+export const metadata = { title: "Edit item" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
