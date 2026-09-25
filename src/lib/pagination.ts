@@ -38,3 +38,42 @@ export function pageWindow(page: number, totalPages: number): (number | null)[] 
   });
   return out;
 }
+
+/** The chosen page size as a query param to carry through the search box and tabs (only when it is a valid, non-default size). */
+export function keepPerPage(perPage: string | undefined): Record<string, string> {
+  const { perPage: n } = getPaging({ perPage }, 0);
+  return n !== DEFAULT_PAGE_SIZE ? { perPage: String(n) } : {};
+}
+
+/** Inclusive row range for `.range(from, to)`. */
+export function pageRange(paging: Paging): { from: number; to: number } {
+  return { from: paging.start, to: paging.start + paging.perPage - 1 };
+}
+
+type PageQuery<T> = (range: { from: number; to: number }) => PromiseLike<{ data: T[] | null; count: number | null; error: unknown }>;
+
+/** PostgREST answers a range that starts past the last row with HTTP 416 and this code (and no row count). */
+const RANGE_NOT_SATISFIABLE = "PGRST103";
+
+/**
+ * Loads one page from the database. The total is only known once a query answers, so the page in the URL is queried as
+ * asked; when it turns out to be past the end (e.g. page 9 after customers were deleted) it is clamped and queried
+ * again, so the user still sees rows. `fetchPage` must ask the database for an exact count.
+ */
+export async function loadPage<T>(sp: { page?: string; perPage?: string }, fetchPage: PageQuery<T>): Promise<{ rows: T[]; paging: Paging; failed: boolean }> {
+  const failed = { rows: [] as T[], paging: getPaging(sp, 0), failed: true };
+  let held = getPaging(sp, Number.MAX_SAFE_INTEGER); // the page `res` was asked for (not clamped yet)
+  let res = await fetchPage(pageRange(held));
+  if ((res.error as { code?: unknown } | null)?.code === RANGE_NOT_SATISFIABLE) {
+    // Past the end, and the error carries no count: page 1 always exists and brings the count with it.
+    held = getPaging({ perPage: sp.perPage }, Number.MAX_SAFE_INTEGER);
+    res = await fetchPage(pageRange(held));
+  }
+  if (res.error) return failed;
+  const paging = getPaging(sp, res.count ?? res.data?.length ?? 0);
+  if (paging.page !== held.page) {
+    res = await fetchPage(pageRange(paging));
+    if (res.error) return failed;
+  }
+  return { rows: res.data ?? [], paging, failed: false };
+}

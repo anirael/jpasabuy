@@ -39,3 +39,13 @@ export function mercariImageUrl(url: string): string | null {
   const m = /^https:\/\/jp\.mercari\.com\/(?:en\/)?item\/(m\d+)$/.exec(url);
   return m ? `https://static.mercdn.net/item/detail/orig/photos/${m[1]}_1.jpg` : null;
 }
+
+/**
+ * Small version of a photo built by mercariImageUrl(), for list thumbnails (Mercari's own listing-thumbnail path,
+ * about 300px wide instead of the full-size original). Only the exact shape mercariImageUrl() produces is rewritten;
+ * any other URL (uploads, shop photos, pasted links) returns null. The URL saved in the database is never changed.
+ */
+export function mercariThumbUrl(url: string): string | null {
+  const m = /^https:\/\/static\.mercdn\.net\/item\/detail\/orig\/photos\/(m\d+_1\.jpg)(\?\d+)?$/.exec(url);
+  return m ? `https://static.mercdn.net/thumb/photos/${m[1]}${m[2] ?? ""}` : null;
+}

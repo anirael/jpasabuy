@@ -30,7 +30,6 @@ function Stat({ label, value, hint, accent = false }: { label: string; value: st
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; by?: string }> }) {
-  const profile = await requireOwner();
   const sp = await searchParams;
   const range = resolveRange(sp.from, sp.to);
   const bucket: Bucket = BUCKETS.some((b) => b.key === sp.by) ? (sp.by as Bucket) : "day";
@@ -38,7 +37,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const ts = rangeToTimestamps(range);
 
   const supabase = await createClient();
-  const [statsRes, chartsRes] = await Promise.all([
+  // The role is only a gate, so the queries start with the check instead of after it (RLS already stops non-owners; requireOwner() still redirects them).
+  const [profile, statsRes, chartsRes] = await Promise.all([
+    requireOwner(),
     supabase.rpc("dashboard_stats", ts),
     supabase.rpc("dashboard_charts", { ...ts, p_bucket: bucket }),
   ]);

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calc, decimalToCentavos, formatPHP, formatPHPDecimal, rateToHundredths, RATE_OPTIONS } from "../src/lib/money.ts";
-import { isFetchableMercariUrl, isValidItemLink, mercariImageUrl } from "../src/lib/mercari.ts";
+import { isFetchableMercariUrl, isValidItemLink, mercariImageUrl, mercariThumbUrl } from "../src/lib/mercari.ts";
 
 test("rate options are .40 … .50 in 0.01 steps", () => {
   assert.equal(RATE_OPTIONS.length, 11);
@@ -100,4 +100,17 @@ test("the dark theme is offered, marks the page dark and inverts the neutral sca
   assert.ok(!themeCss(getTheme("default")).includes("color-scheme"));
   const lum = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).reduce((a, v) => a + v, 0);
   assert.ok(lum(dark.neutrals![700]) > lum(dark.neutrals![50])); // text shades are lighter than surface tints
+});
+
+test("list thumbnails use Mercari's small photo path, only for the URL shape mercariImageUrl builds", () => {
+  const orig = mercariImageUrl("https://jp.mercari.com/en/item/m56561393231")!;
+  assert.equal(mercariThumbUrl(orig), "https://static.mercdn.net/thumb/photos/m56561393231_1.jpg");
+  assert.equal(mercariThumbUrl(`${orig}?1598779743`), "https://static.mercdn.net/thumb/photos/m56561393231_1.jpg?1598779743");
+  // Anything else is left alone: uploads, shop photos, pasted links, other hosts, lookalikes.
+  assert.equal(mercariThumbUrl("https://abc.supabase.co/storage/v1/object/public/item-images/co/x.png"), null);
+  assert.equal(mercariThumbUrl("https://static.mercdn.net/thumb/photos/m5_1.jpg"), null);
+  assert.equal(mercariThumbUrl("https://static.mercdn.net/item/detail/orig/photos/m5_2.jpg"), null);
+  assert.equal(mercariThumbUrl("https://static.mercdn.net.evil.com/item/detail/orig/photos/m5_1.jpg"), null);
+  assert.equal(mercariThumbUrl("http://static.mercdn.net/item/detail/orig/photos/m5_1.jpg"), null);
+  assert.equal(mercariThumbUrl("https://static.mercdn.net/item/detail/orig/photos/m5_1.jpg?x=1"), null);
 });

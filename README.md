@@ -1,7 +1,7 @@
 # Japan Pasabuy Inventory System
 
-Multi-user web app for a Japan pasabuy (buy-for-others) business. The **Owner** logs Mercari Japan items, moves them through
-`JP Address → Onhand → Delivered`, manages customers and sees sales stats. **Pasabuyers** get a read-only list of Onhand items.
+Multi-user web app for a Japan pasabuy (buy-for-others) business. The **Owner** logs items (from Mercari Japan or added manually), moves them through
+`Secured → JP Address → Onhand → Delivered`, manages customers and sees sales stats. **Pasabuyers** get a read-only list of Onhand items.
 
 | Layer | Tech |
 |---|---|
@@ -14,7 +14,16 @@ Multi-user web app for a Japan pasabuy (buy-for-others) business. The **Owner** 
 ### 1. Supabase project
 Either create a project at [supabase.com](https://supabase.com) or run one locally with the [Supabase CLI](https://supabase.com/docs/guides/cli) (`supabase start`, needs Docker).
 
-Apply **all** migrations in `supabase/migrations/`, in order: `…_init.sql`, `…_mercari_formats_and_charts.sql`, `…_company_logo.sql`, `…_any_item_link.sql`. Updating an existing install? Just run the ones you haven't applied yet (`20260102…` adds the dashboard charts; `20260103…` adds the company logo; `20260104…` lets items use any http(s) link, including Mercari shop products).
+Apply **all** migrations in `supabase/migrations/`, in order. Updating an existing install? Just run the ones you haven't applied yet:
+- `20260101…` initial schema, RLS, storage
+- `20260102…` dashboard charts
+- `20260103…` company logo
+- `20260104…` lets items use any http(s) link, including Mercari shop products
+- `20260105…` / `20260106…` add the `SECURED` status (the new default for items, and the first stage in the dashboard's Order status chart)
+- `20260107…` the Pasabuyer view drops the customer name and Packed flag
+- `20260108…` JP price, rate and Pasabuyer rate become optional
+- `20260109…` manual listings (an item can be created without a link)
+- `20260110…` optional item category
 
 - **CLI:** `supabase link --project-ref <ref>` then `supabase db push` (local: `supabase db reset`)
 - **Or:** paste each file, in order, into the Supabase dashboard → SQL Editor → Run.
@@ -65,8 +74,8 @@ Or skip the seed and go to `/signup` to create your own business (disable with `
 
 ## Tests
 ```bash
-npm test                 # money math + Mercari URL validation
-npm run test:rls         # runs the migration on an in-process Postgres (PGlite) and checks 52 tenancy/role/chart/company rules
+npm test                 # money math, item link validation, dashboard chart helpers, customer duplicate/pagination checks
+npm run test:rls         # runs the migrations on an in-process Postgres (PGlite) and checks 60 tenancy/role/chart/company rules
 pip install -r requirements-dev.txt && pytest tests/scraper
 ```
 
@@ -76,7 +85,7 @@ pip install -r requirements-dev.txt && pytest tests/scraper
 - Every user has one row in `profiles` (`company_id`, `role`). All data tables carry `company_id`.
 - **RLS policies** on `customers` and `items` allow only an `OWNER` of the *same* company. A company can never read or write another's rows.
 - **Pasabuyers have no access to the `items`/`customers` tables at all.** They read the `pasabuyer_items` view, which returns only `ONHAND`
-  rows of their own company and only non-financial columns (photo, item link/ID, notes). No JP price, rates, totals, profit or addresses.
+  rows of their own company and only non-financial columns (photo, item link/ID, notes). No customer name, Packed flag, JP price, rates, totals, profit or addresses.
 - Triggers reject an item whose customer belongs to a different company, and block changing `company_id`.
 - `total_price`, `pasabuyer_cost` and `profit` are **generated columns** (`numeric`), so clients can never send their own totals.
 - The app additionally checks the role in every Server Action and page (`requireOwner` / `assertOwner`), but the database is the source of truth.
@@ -85,11 +94,12 @@ pip install -r requirements-dev.txt && pytest tests/scraper
 The Add Items page has two separate buttons. **Add Item** validates the item on the form and puts it in the *Items to submit* list, then clears the link/price/notes so you can enter the next one (customer, rates and status stay filled in, since most orders share them). **Submit** saves everything in the list at once, in a single all-or-nothing database insert, and also includes the item still on the form. Queued items can be edited or removed before submitting. Several items for the same *new* customer share one customer record. Up to 50 items per submit.
 
 Each item goes through these steps:
-1. **Any http(s) link is accepted** as the item link. These Mercari shapes (with or without `/en/`) also get the photo and price fetched automatically: `https://jp.mercari.com/item/m123…` and `https://jp.mercari.com/shops/product/abc123`. The exact patterns are `^https://jp\.mercari\.com/(en/)?item/m\d+$` and `^https://jp\.mercari\.com/(en/)?shops/product/[A-Za-z0-9_-]+$`. Any other link is saved as-is and never fetched; the Owner adds the photo and price by hand.
+1. **A link is optional.** Toggle "Add without a link" for a manual listing (the Owner enters the photo, price and notes by hand, no fetch attempted). Otherwise, **any http(s) link is accepted** as the item link. These Mercari shapes (with or without `/en/`) also get the photo and price fetched automatically: `https://jp.mercari.com/item/m123…` and `https://jp.mercari.com/shops/product/abc123`. The exact patterns are `^https://jp\.mercari\.com/(en/)?item/m\d+$` and `^https://jp\.mercari\.com/(en/)?shops/product/[A-Za-z0-9_-]+$`. Any other link is saved as-is and never fetched; the Owner adds the photo and price by hand.
 2. For normal listings the photo URL is built from the item ID (`static.mercdn.net/item/detail/orig/photos/<id>_1.jpg`), so it always works. Shop products use the photo the scraper finds. The JPY price comes from the Python service (price meta tags, then the rendered price markup).
 3. The photo can always be added or replaced by hand: **paste an image from the clipboard (Ctrl+V anywhere on the form)**, paste an image link, or upload a JPG/PNG/WebP up to 5 MB. Prices can be typed in. A scraping failure never blocks saving.
-4. Rate / Pasabuyer rate dropdowns go from `0.40` to `0.50`. **Total = ¥ × rate**, **Cost = ¥ × pasabuyer rate**, **Profit = Total − Cost**, shown live in PHP with 2 decimals.
+4. **JP price, rate and Pasabuyer rate are all optional** — they can be left blank and filled in later. Rate / Pasabuyer rate dropdowns go from `0.40` to `0.50`. **Total = ¥ × rate**, **Cost = ¥ × pasabuyer rate**, **Profit = Total − Cost**, shown live in PHP with 2 decimals once all their inputs are set (otherwise they stay blank).
    JPY is stored as whole yen, so the math is exact in integer centavos (no floating point).
+5. An optional **category** can be picked from a fixed list (Anime, Pokemon, Sylvanian, Clothing, KPop, CD, Plush, Keychains, Stationery, One Piece, Figurines). It can be changed later from a dropdown right in the Inventory table.
 
 ### Security notes
 - Passwords are hashed by Supabase Auth; sessions live in HTTP-only cookies and are validated with `auth.getUser()` in the middleware.
@@ -101,14 +111,15 @@ Each item goes through these steps:
 ## Pages
 - **Dashboard**: Total Delivered, Total Sales and New Clients, an *Order status* donut (Secured / Japan Address / Onhand / Delivered) and a *Profit* line chart that can be grouped Daily, Monthly or Yearly. Both charts sit under the same date filter.
 - **Client Information**: customer name and address only. Addresses are masked; click the eye to reveal one. A customer's own page (`/customers/<id>`) keeps the full details and their item list.
-- **Inventory**: click a photo to enlarge it in a modal (click it again, click outside, or press Esc to close). No new page opens.
-- **Settings** (above Logout): every role can pick one of 5 color themes (saved in a cookie, so per browser). The **Owner** can also rename the company and choose its sidebar icon from 8 designs (clover, sakura, daisy, leaf, heart, gift, paper plane, shopping bag). The company name and icon replace the "Company" heading in the sidebar for the whole team. The sign-in page has no company yet, so it keeps the default "Company" branding.
+- **Inventory**: click a photo to enlarge it in a modal (click it again, click outside, or press Esc to close). No new page opens. Category can be changed inline from a dropdown in the table, and search matches category too.
+- **Settings** (above Logout): every role can pick one of 6 color themes (saved in a cookie, so per browser). The **Owner** can also rename the company and choose its sidebar icon from 8 designs (clover, sakura, daisy, leaf, heart, gift, paper plane, shopping bag). The company name and icon replace the "Company" heading in the sidebar for the whole team. The sign-in page has no company yet, so it keeps the default "Company" branding.
 - **Loading**: every module shows a skeleton placeholder (`loading.tsx`) while its data loads.
 
 ## Assumptions (change if you disagree)
-- Pasabuyers see: photo, Mercari link, item ID, notes — not the customer, packed flag, prices, rates or addresses (edit the `pasabuyer_items` view to change this).
+- Pasabuyers see: photo, item link, item ID, notes — not the customer, packed flag, prices, rates, category or addresses (edit the `pasabuyer_items` view to change this).
 - Themes map each palette to roles: darkest colors for the sidebar, mid colors for buttons, highlights and the chart line, lightest for the page background. A few text shades are darkened versions of the palette so text stays readable.
-- The Profit chart counts delivered items only (by `delivered_at`); Order status counts all items right now.
+- New items default to `SECURED`; the Profit chart counts delivered items only (by `delivered_at`); Order status counts all items right now.
+- Item category is a fixed, hard-coded list (see `CATEGORIES` in `src/lib/types.ts`); adding a value means updating both that list and the CHECK constraint (a new migration).
 - Deleting a customer with items is blocked (delete or reassign their items first).
 - Dashboard range applies to all three stats (default: last 30 days, Asia/Manila time): Delivered/Sales use `delivered_at`, New Clients uses the customer `created_at`.
 - A **Team** page (Owner only) creates/removes Pasabuyer accounts with a temporary password. Email invites would need SMTP configured in Supabase.

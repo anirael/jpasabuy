@@ -7,10 +7,13 @@ import type { Profile } from "@/lib/types";
 export const metadata = { title: "Team" };
 
 export default async function TeamPage() {
-  const owner = await requireOwner();
   const supabase = await createClient();
+  // The role is only a gate, so the queries start with the check instead of after it (RLS already stops non-owners; requireOwner() still redirects them).
   // RLS: an Owner only sees profiles of their own company.
-  const { data } = await supabase.from("profiles").select("id, company_id, name, email, role").order("role").order("name");
+  const [owner, { data }] = await Promise.all([
+    requireOwner(),
+    supabase.from("profiles").select("id, company_id, name, email, role").order("role").order("name"),
+  ]);
   const people = (data ?? []) as Profile[];
 
   return (

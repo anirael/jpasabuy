@@ -5,17 +5,23 @@ import { createClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 import { DEFAULT_COMPANY_NAME, DEFAULT_LOGO, isLogoId, type LogoId } from "@/lib/logos";
 
-/** Current user's profile (validated against Supabase Auth), or null. Cached per request. */
+/**
+ * Current user's profile, or null. Cached per request.
+ *
+ * The middleware has already validated (and refreshed) the session with auth.getUser() on this very request, so here
+ * the token is only verified locally: getClaims() checks the signature against the project's public signing keys and
+ * rejects an expired token, with no extra round trip to Supabase Auth. If the token can't be verified locally (a
+ * legacy HS256 secret, an unknown key), it falls back to asking Auth itself, so an invalid token never counts as signed in.
+ */
 export const getProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data: auth } = await supabase.auth.getClaims();
+  const userId = auth?.claims.sub;
+  if (!userId) return null;
   const { data } = await supabase
     .from("profiles")
     .select("id, company_id, name, email, role")
-    .eq("id", user.id)
+    .eq("id", userId)
     .maybeSingle();
   return (data as Profile | null) ?? null;
 });

@@ -12,12 +12,16 @@ export const metadata = { title: "Edit item" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function EditItemPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireOwner();
   const { id } = await params;
-  if (!UUID.test(id)) notFound();
+  if (!UUID.test(id)) {
+    await requireOwner();
+    notFound();
+  }
 
   const supabase = await createClient();
-  const [{ data: item }, { data: customers }] = await Promise.all([
+  // The role is only a gate, so the queries start with the check instead of after it (RLS already stops non-owners; requireOwner() still redirects them).
+  const [, { data: item }, { data: customers }] = await Promise.all([
+    requireOwner(),
     supabase.from("items").select("*").eq("id", id).maybeSingle(),
     supabase.from("customers").select("id, name").order("name"),
   ]);

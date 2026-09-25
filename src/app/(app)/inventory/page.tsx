@@ -6,7 +6,7 @@ import { PasabuyerInventory } from "@/components/inventory/PasabuyerInventory";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { IconPlus } from "@/components/ui/icons";
-import { DEFAULT_PAGE_SIZE, getPaging } from "@/lib/pagination";
+import { getPaging, keepPerPage } from "@/lib/pagination";
 import { STATUS_LABEL, STATUSES, type Item, type ItemStatus, type PasabuyerItem } from "@/lib/types";
 
 export const metadata = { title: "Inventory" };
@@ -25,12 +25,6 @@ function Empty({ text, action }: { text: string; action?: React.ReactNode }) {
       {action}
     </div>
   );
-}
-
-/** The chosen page size, carried through the search box and tabs (only when it is a valid, non-default size). */
-function keepSize(perPage: string | undefined): Record<string, string> {
-  const { perPage: n } = getPaging({ perPage }, 0);
-  return n !== DEFAULT_PAGE_SIZE ? { perPage: String(n) } : {};
 }
 
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; page?: string; perPage?: string }> }) {
@@ -52,7 +46,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
     const items = found.slice(paging.start, paging.end);
     return (
       <>
-        <PageHeader title="Inventory" subtitle="Items that are onhand" search={{ action: "/inventory", defaultValue: q, hidden: keepSize(sp.perPage) }} />
+        <PageHeader title="Inventory" subtitle="Items that are onhand" search={{ action: "/inventory", defaultValue: q, hidden: keepPerPage(sp.perPage) }} />
         {error ? (
           <p role="alert" className="text-sm text-red-700">
             Couldn&apos;t load items. Please refresh.
@@ -83,7 +77,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const inTab = searched.filter((i) => i.status === status);
   const paging = getPaging(sp, inTab.length);
   const items = inTab.slice(paging.start, paging.end);
-  const size = keepSize(sp.perPage);
+  const size = keepPerPage(sp.perPage);
 
   return (
     <>

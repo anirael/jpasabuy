@@ -3,27 +3,35 @@ import { requireOwner } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { HiddenAddress } from "@/components/customers/HiddenAddress";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Pagination } from "@/components/ui/Pagination";
 import { IconPlus } from "@/components/ui/icons";
+import { keepPerPage, loadPage } from "@/lib/pagination";
+import { cleanSearch, containsRegex } from "@/lib/search";
 
 export const metadata = { title: "Client Information" };
 
 type Row = { id: string; name: string; shipping_address: string };
 
-export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await requireOwner();
-  const q = ((await searchParams).q ?? "").trim().slice(0, 100).toLowerCase();
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string; page?: string; perPage?: string }> }) {
+  const sp = await searchParams;
+  const q = cleanSearch(sp.q);
   const supabase = await createClient();
-  const { data, error } = await supabase.from("customers").select("id, name, shipping_address").order("name").limit(1000);
 
-  let customers = (data ?? []) as Row[];
-  // Search matches names only, so a search can never be used to probe hidden addresses.
-  if (q) customers = customers.filter((c) => c.name.toLowerCase().includes(q));
+  // Search matches names only.
+  const [, { rows: customers, paging, failed }] = await Promise.all([
+    requireOwner(),
+    loadPage<Row>(sp, ({ from, to }) => {
+      let query = supabase.from("customers").select("id, name, shipping_address", { count: "exact" });
+      if (q) query = query.filter("name", "imatch", containsRegex(q));
+      return query.order("name").order("id").range(from, to);
+    }),
+  ]);
 
   return (
     <>
       <PageHeader
         title="Client Information"
-        search={{ action: "/customers", defaultValue: q, placeholder: "Search customer name…" }}
+        search={{ action: "/customers", defaultValue: q.toLowerCase(), placeholder: "Search customer name…", hidden: keepPerPage(sp.perPage) }}
         actions={
           <Link href="/customers/new" className="btn-primary shrink-0">
             <IconPlus /> Add customer
@@ -31,7 +39,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         }
       />
 
-      {error ? (
+      {failed ? (
         <p role="alert" className="text-sm text-red-700">
           Couldn&apos;t load customers. Please refresh.
         </p>
@@ -41,10 +49,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </div>
       ) : (
         <>
-          {/* Tablet / desktop table */}
-          <div className="hidden overflow-hidden rounded-2xl border border-neutral-200 bg-white md:block">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-neutral-100/70 text-neutral-500">
+          <div className="md:overflow-hidden md:rounded-2xl md:border md:border-neutral-200 md:bg-white">
+            <table className="block w-full text-left text-sm md:table">
+              <thead className="hidden bg-neutral-100/70 text-neutral-500 md:table-header-group">
                 <tr>
                   <th scope="col" className="w-1/3 px-4 py-3.5 font-medium">
                     Customer Name
@@ -54,15 +61,19 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-100">
+              <tbody className="block space-y-3 md:table-row-group md:space-y-0 md:divide-y md:divide-neutral-100">
                 {customers.map((c) => (
-                  <tr key={c.id}>
-                    <td className="px-4 py-3.5 align-top">
-                      <Link href={`/customers/${c.id}`} className="font-medium hover:text-accent-dark hover:underline">
+                  <tr key={c.id} className="card block p-4 md:table-row md:rounded-none md:border-0 md:bg-transparent md:p-0">
+                    <td className="block md:table-cell md:px-4 md:py-3.5 md:align-top">
+                      <Link
+                        href={`/customers/${c.id}`}
+                        className="font-display text-base font-semibold hover:text-accent-dark md:font-sans md:text-sm md:font-medium md:hover:underline"
+                      >
                         {c.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 align-top">
+                    <td className="mt-2 block md:mt-0 md:table-cell md:px-4 md:py-3 md:align-top">
+                      <p className="mb-0.5 text-xs text-neutral-500 md:hidden">Address</p>
                       <HiddenAddress address={c.shipping_address} />
                     </td>
                   </tr>
@@ -70,21 +81,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               </tbody>
             </table>
           </div>
-
-          {/* Phone cards */}
-          <ul className="space-y-3 md:hidden">
-            {customers.map((c) => (
-              <li key={c.id} className="card p-4">
-                <Link href={`/customers/${c.id}`} className="font-display text-base font-semibold hover:text-accent-dark">
-                  {c.name}
-                </Link>
-                <div className="mt-2 text-sm">
-                  <p className="mb-0.5 text-xs text-neutral-500">Address</p>
-                  <HiddenAddress address={c.shipping_address} />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <Pagination paging={paging} basePath="/customers" params={q ? { q } : {}} />
         </>
       )}
     </>
